@@ -39,7 +39,7 @@ fi
 
 # install ascend
 echo "Downloading ascend $LATEST..."
-if "$@" "https://github.com/alis-is/ascend/releases/download/$LATEST/ascend.lua" &&
+if "$@" "https://github.com/alis-is/ascend/releases/download/$LATEST/ascend" &&
     cp "$TMP_NAME" /usr/sbin/ascend &&
     chmod +x /usr/sbin/ascend; then
     rm "$TMP_NAME"
@@ -51,7 +51,7 @@ else
 fi
 # install asctl
 echo "Downloading asctl $LATEST..."
-if "$@" "https://github.com/alis-is/ascend/releases/download/$LATEST/asctl.lua" &&
+if "$@" "https://github.com/alis-is/ascend/releases/download/$LATEST/asctl" &&
     cp "$TMP_NAME" /usr/sbin/asctl &&
     chmod +x /usr/sbin/asctl; then
     rm "$TMP_NAME"
