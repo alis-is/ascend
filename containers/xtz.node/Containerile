@@ -1,0 +1,34 @@
+FROM alpine:latest
+
+# create ascend directories
+RUN mkdir -p /ascend/services
+RUN mkdir -p /ascend/apps
+RUN mkdir -p /var/log/ascend
+
+ENV ASCEND_SERVICES=/ascend/services
+ENV ASCEND_SOCKET=/var/run/ascend.socket
+ENV ASCEND_LOGS=/var/log/ascend
+
+RUN printf '#!/bin/sh\n\
+if [ -z "$GITHUB_TOKEN" ]; then\n\
+  wget "$@" \n\
+else\n\
+  wget --header "Authorization: token $GITHUB_TOKEN" "$@" \n\
+fi\n' > /usr/local/bin/auth_wget && chmod +x /usr/local/bin/auth_wget
+
+# Use auth_wget for downloading files with optional authentication
+RUN auth_wget https://raw.githubusercontent.com/alis-is/ami/main/install.sh -O /tmp/install.sh && sh /tmp/install.sh
+RUN auth_wget https://raw.githubusercontent.com/alis-is/ascend/main/install.sh -O /tmp/install.sh && sh /tmp/install.sh
+
+RUN addgroup -S ascend && adduser -S ascend -G ascend \
+    && chown -R ascend:ascend /ascend /var/log/ascend /usr/sbin/ascend /usr/local/bin/auth_wget
+
+# setup node app
+RUN mkdir -p /ascend/apps/node
+ADD app.hjson /ascend/apps/node/app.hjson 
+WORKDIR /ascend/apps/node
+RUN ami setup
+
+WORKDIR /home/ascend
+USER ascend
+ENTRYPOINT [ "ascend" ]

@@ -1,0 +1,11 @@
+{
+        "configuration": {
+                "NODE_TYPE":"node",
+        },
+        "id": "bb-default-node",
+        "type": {
+                "id": "xtz.node",
+                "version": "latest"
+        },
+        "user": "ascend"
+}
