@@ -25,8 +25,8 @@ if ! "$@" https://raw.githubusercontent.com/alis-is/eli/master/install.sh; then
     rm "$TMP_NAME"
     exit 1
 fi
-if ! sh "$TMP_NAME" --prerelase; then
-    echo "Failed to download eli, please retry ... "
+if ! sh "$TMP_NAME" --prerelease; then
+    echo "Failed to install eli, please retry ... "
     rm "$TMP_NAME"
     exit 1
 fi
