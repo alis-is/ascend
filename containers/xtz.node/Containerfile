@@ -6,7 +6,7 @@ RUN mkdir -p /ascend/apps
 RUN mkdir -p /var/log/ascend
 
 ENV ASCEND_SERVICES=/ascend/services
-ENV ASCEND_SOCKET=/var/run/ascend.socket
+ENV ASCEND_SOCKET=/ascend/ascend.socket
 ENV ASCEND_LOGS=/var/log/ascend
 
 RUN printf '#!/bin/sh\n\

@@ -2,10 +2,6 @@
     configuration: {
         CONFIG_FILE: {
             p2p: {
-                bootstrap-peers: [
-                    boot.tzbeta.net
-                    boot.mainnet.oxheadhosted.com
-                ]
                 listen-addr: "[::]:9732"
                 limits: {
                     connection-timeout: 10

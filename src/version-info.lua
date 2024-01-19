@@ -1,4 +1,4 @@
-local ASCEND_VERSION = "0.0.8"
+local ASCEND_VERSION = "0.0.9"
 
 return {
 	VERSION = ASCEND_VERSION,
