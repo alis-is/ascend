@@ -25,17 +25,7 @@ RUN addgroup -S ascend && adduser -S ascend -G ascend \
 
 # setup node app
 RUN mkdir -p /ascend/apps/node
-RUN echo -e "{\n\
-  \"configuration\": {\n\
-    \"NODE_TYPE\":\"node\"\n\
-  },\n\
-  \"id\": \"bb-default-node\",\n\
-  \"type\": {\n\
-    \"id\": \"xtz.node\",\n\
-    \"version\": \"latest\"\n\
-  },\n\
-  \"user\": \"ascend\"\n\
-}" > /ascend/apps/node/app.hjson
+ADD app.hjson /ascend/apps/node/app.hjson
 WORKDIR /ascend/apps/node
 RUN ami setup
 

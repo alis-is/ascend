@@ -1,0 +1,43 @@
+{
+    configuration: {
+        CONFIG_FILE: {
+            p2p: {
+                bootstrap-peers: [
+                    boot.tzbeta.net
+                    boot.mainnet.oxheadhosted.com
+                ]
+                listen-addr: "[::]:9732"
+                limits: {
+                    connection-timeout: 10
+                    min-connections: 15
+                    expected-connections: 20
+                    max-connections: 30
+                    max_known_points: [
+                        320
+                        240
+                    ]
+                    max_known_peer_ids: [
+                        320
+                        240
+                    ]
+                }
+            }
+            shell: {
+                chain_validator: {
+                    synchronisation_threshold: 6
+                }
+            }
+        }
+        NODE_TYPE: node
+		RPC_ADDR: 0.0.0.0
+		// STARTUP_ARGS: [
+		// 	--allow-all-rpc
+		// ]
+    }
+    id: bb-default-node
+    type: {
+        id: xtz.node
+        version: latest
+    }
+    user: ascend
+}
