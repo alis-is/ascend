@@ -63,7 +63,7 @@ jobs:
           token: ${{ secrets.AIR_AT }}
           repository: alis-is/air
           event-type: app-release
-          client-payload: '{ "id": "plugin:asctl", "version": "${{ steps.prep.outputs.VERSION }}", "package": "https://github.com/alis-is/ascend/releases/download/${{ steps.prep.outputs.VERSION }}/asctl-${{ steps.prep.outputs.VERSION }}.zip", "sha256": "${{ steps.hash.outputsAMI_ASCTL_SHA256 }}" }'
+          client-payload: '{ "id": "plugin:asctl", "version": "${{ steps.prep.outputs.VERSION }}", "package": "https://github.com/alis-is/ascend/releases/download/${{ steps.prep.outputs.VERSION }}/asctl-${{ steps.prep.outputs.VERSION }}.zip", "sha256": "${{ steps.hash.outputs.AMI_ASCTL_SHA256 }}" }'
 
   build-containers:
     runs-on: ubuntu-latest
