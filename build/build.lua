@@ -79,6 +79,13 @@ local asctlOutput = "../bin/asctl"
 amalg("-o", asctlOutput, "-s", asctlEntrypoint, table.unpack(collect_requires(asctlEntrypoint)))
 inject_license(asctlOutput)
 
+fs.mkdirp("../bin/ami/")
+local amiAsctlEntrypoint = "ami-plugin/asctl.lua"
+local amiAsctlOutput = "../bin/ami/asctl.lua"
+amalg("-o", amiAsctlOutput, "-s", amiAsctlEntrypoint, table.unpack(collect_requires(amiAsctlEntrypoint)))
+local fileName = string.interpolate("${pluginName}-${version}.zip", { pluginName = "asctl", version = require"version-info".VERSION })
+zip.compress("../bin/ami", path.combine("../bin", fileName), { recurse = true, contentOnly = true, overwrite = true })
+
 -- minify
 -- if not fs.exists("../build/luasrcdiet") then
 -- 	net.download_file("https://github.com/cryi/luasrcdiet/archive/refs/tags/1.1.1.zip", "../build/luasrcdiet.zip", { followRedirects = true })

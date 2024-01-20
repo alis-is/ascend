@@ -27,6 +27,7 @@ RUN addgroup -S ascend && adduser -S ascend -G ascend \
 RUN mkdir -p /ascend/apps/node
 ADD app.hjson /ascend/apps/node/app.hjson
 WORKDIR /ascend/apps/node
+# // TODO: add initialization script to setup services on demand
 RUN ami setup
 
 WORKDIR /home/ascend

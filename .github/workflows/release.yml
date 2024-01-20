@@ -42,13 +42,28 @@ jobs:
           eli ./build/build.lua
           # cd .meta && zip ../meta.zip -r * && cd ..
 
+      - name: hash
+        if: ${{ steps.prep.outputs.NEEDS_RELEASE == 'true'}}
+        id: hash
+        run: |
+          echo "AMI_ASCTL_SHA256=$(sha256sum bin/asctl-${{ steps.prep.outputs.VERSION }}.zip | awk '{ print $1 }')" >> $GITHUB_OUTPUT
+
       - name: publish
         uses: ncipollo/release-action@v1
         if: ${{ steps.prep.outputs.NEEDS_RELEASE == 'true'}}
         with:
-          artifacts: "bin/ascend,bin/asctl"
+          artifacts: "bin/ascend,bin/asctl,bin/asctl-${{ steps.prep.outputs.VERSION }}.zip"
           tag: ${{ steps.prep.outputs.VERSION }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Air Repository Dispatch
+        uses: peter-evans/repository-dispatch@v2
+        if: ${{ steps.prep.outputs.NEEDS_RELEASE == 'true'}}
+        with:
+          token: ${{ secrets.AIR_AT }}
+          repository: alis-is/air
+          event-type: app-release
+          client-payload: '{ "id": "plugin:asctl", "version": "${{ steps.prep.outputs.VERSION }}", "package": "https://github.com/alis-is/ascend/releases/download/${{ steps.prep.outputs.VERSION }}/asctl-${{ steps.prep.outputs.VERSION }}.zip", "sha256": "${{ steps.hash.outputsAMI_ASCTL_SHA256 }}" }'
 
   build-containers:
     runs-on: ubuntu-latest

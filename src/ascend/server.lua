@@ -72,7 +72,7 @@ local methodHandlers = {
 			local success = true
 			---@type thread[]
 			local stopJobs = jobs.create_queue(jobs.array_to_array_of_params(request.params), function(name)
-				local ok, err = services.stop(name)
+				local ok, err = services.stop(name, true)
 				success = success and ok
 				responseData[name] = {
 					ok = ok,

@@ -2,7 +2,7 @@ local jsonrpc = require("common.jsonrpc")
 local aenv = require("asctl.internals.env")
 local args = require("common.args")
 local encoding = require("common.encoding")
-local is_tty = require "is_tty".is_stdout_tty()
+local aformat = require("asctl.format")
 
 local client = {}
 local counter = 0
@@ -10,13 +10,13 @@ local counter = 0
 ---@param cmd string
 ---@param parameters any
 function client.execute(cmd, parameters)
-	local socket, err = ipc.safe_connect(aenv.ipcEndpoint)
-	if not socket then
-		if type(err) == "string" and err:find("failed to connect", 1, true) and cmd == "stop" then
+	local ok, socket = ipc.safe_connect(aenv.ipcEndpoint)
+	if not ok then
+		if type(socket) == "string" and socket:find("failed to connect", 1, true) and cmd == "stop" then
 			log_warn("unable to connect to the server, it may be already stopped")
 			os.exit(0)
 		end
-		log_error("failed to connect to the server: ${error}", { error = err })
+		log_error("failed to connect to the server: ${error}", { error = socket })
 		return
 	end
 	counter = counter + 1
@@ -64,11 +64,13 @@ function client.execute(cmd, parameters)
 			if type(result) == "boolean" then
 				os.exit(result and 0 or EXIT_COMMAND_ERROR)
 			end
-			if is_tty then
-				print(hjson.encode(result.data))
+
+			if type(aformat[cmd]) == "function" then
+				aformat[cmd](result.data)
 			else
-				print(hjson.encode_to_json(result.data, { indent = false }))
+				aformat.default(result.data)
 			end
+
 			os.exit(result.success and 0 or EXIT_COMMAND_ERROR)
 		else
 			goto CONTINUE

@@ -1,0 +1,113 @@
+local trace, warn = util.global_log_factory("plugin/asctl", "trace", "warn")
+local hjson = require"hjson"
+
+assert(os.execute('asctl --version 2>&1 >/dev/null'), "asctl not found")
+assert(proc.EPROC, "asctl plugin requires posix proc extra api (eli.proc.extra)")
+
+local ASCEND_SERVICES = os.getenv("ASCEND_SERVICES") or "/etc/ascend/services"
+
+local asctl = {}
+
+function asctl.exec(...)
+    local _cmd = string.join_strings(" ", ...)
+    trace("Executing asctl " .. _cmd)
+    local _proc = proc.spawn("asctl", { ... }, { stdio = { stdout = "pipe", stderr = "pipe" }, wait = true })
+    if not _proc then
+        error("Failed to execute asctl command: " .. _cmd)
+    end
+    trace("asctl exit code: " .. _proc.exitcode)
+    local _stderr = _proc.stderrStream:read("a")
+    local _stdout = _proc.stdoutStream:read("a")
+    return _proc.exitcode, _stdout, _stderr
+end
+
+function asctl.install_service(sourceFile, serviceName, options)
+    if type(options) ~= "table" then
+        options = {}
+    end
+    if type(options.kind) ~= "string" then
+        options.kind = "service"
+    end
+    local serviceUnitFile = string.interpolate("${serivceDirectory}/${service}.hjson", {
+        serivceDirectory = ASCEND_SERVICES,
+        service = serviceName
+    })
+    local _ok, _error = fs.safe_copy_file(sourceFile, serviceUnitFile)
+    assert(_ok, string.interpolate("Failed to install ${service} (${file}): ${error}", {
+        service = serviceName,
+        file = serviceUnitFile,
+        error = _error
+    }))
+
+    if type(options.reload) ~= "boolean" or options.reload == true then
+        local _exitcode, _stdout, _stderr = asctl.exec("reload")
+        if _exitcode ~= 0 then
+            warn({ msg = "Failed to reload ascend daemon!", stdout = _stdout, stderr = _stderr })
+        end
+    end
+end
+
+function asctl.start_service(serviceName)
+    trace("Starting service: ${service}", { service = serviceName })
+    local exitcode = asctl.exec("start", serviceName)
+    assert(exitcode == 0, "Failed to start service")
+    trace("Service ${service} started.", { service = serviceName })
+end
+
+function asctl.stop_service(serviceName)
+    trace("Stoping service: ${service}", { service = serviceName })
+    local exitcode = asctl.exec("stop", serviceName)
+    assert(exitcode == 0, "Failed to stop service")
+    trace("Service ${service} stopped.", { service = serviceName })
+end
+
+function asctl.remove_service(serviceName, options)
+    if type(options) ~= "table" then
+        options = {}
+    end
+    local serviceUnitFile = string.interpolate("${serivceDirectory}/${service}.hjson", {
+        serivceDirectory = ASCEND_SERVICES,
+        service = serviceName
+    })
+    if not fs.exists(serviceUnitFile) then return end -- service not found so skip
+
+    trace("Removing service: ${service}", { service = serviceName })
+    local exitcode = asctl.exec("stop", serviceName)
+    assert(exitcode == 0, "Failed to stop service")
+    trace("Service ${service} stopped.", { service = serviceName })
+
+    trace("Removing service...")
+    local ok, error = fs.safe_remove(serviceUnitFile)
+    if not ok then
+        error(string.interpolate("Failed to remove ${service} (${file}): ${error}", {
+            service = serviceName,
+            file = serviceUnitFile,
+            error = error
+        }))
+    end
+
+    if type(options.reload) ~= "boolean" or options.reload == true then
+        local exitcode, stdout, stderr = asctl.exec("reload")
+        if exitcode ~= 0 then
+            warn({ msg = "Failed to reload ascend!", stdout = stdout, stderr = stderr })
+        end
+    end
+    trace("Service ${service} removed.", { service = serviceName })
+end
+
+function asctl.get_service_status(serviceName)
+    trace("Getting service " .. serviceName .. "status...")
+    local exitcode, stdout = asctl.exec("status", serviceName)
+    assert(exitcode == 0, "Failed to get service status")
+    local response = hjson.parse(stdout) --[[@as ]]
+    local serviceStatus = response[serviceName].status
+    local moduleStatus = serviceStatus.default
+    if type(serviceStatus) ~= "table" then
+        error("Failed to get service status")
+    end
+    local status = moduleStatus.state == "active" and "running" or "stopped"
+    local started = moduleStatus.started and os.date("%a %Y-%m-%d %H:%M:%S", moduleStatus.started)
+    return status, started
+end
+
+return util.generate_safe_functions(asctl)

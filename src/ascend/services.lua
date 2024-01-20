@@ -5,6 +5,7 @@ local is_stop_requested = require "ascend.signal"
 
 ---@class AscendManagedServiceModule
 ---@field definition AscendServiceModuleDefinition
+---@field state "active" | "inactive" | "failed" | "stopped" | "stopping"
 ---@field process EliProcess?
 ---@field exitCode integer?
 ---@field started number?
@@ -17,7 +18,7 @@ local is_stop_requested = require "ascend.signal"
 ---@field modules table<string, AscendManagedServiceModule>
 ---@field source string
 
----@class AscendManagedServiceStatus
+---@class AscendManagedServiceModuleStatus
 ---@field exitCode integer?
 ---@field active boolean
 ---@field started number?
@@ -44,6 +45,7 @@ end
 local function new_managed_module(definition)
 	return {
 		definition = definition,
+		state = "inactive",
 		process = nil,
 		exitCode = nil,
 		started = nil,
@@ -124,7 +126,7 @@ end
 ---@return boolean
 ---@return string?
 local function start_module(module, manualStart)
-	if module.process then
+	if module.state == "active" then
 		return true
 	end
 
@@ -155,6 +157,7 @@ local function start_module(module, manualStart)
 	end
 
 	module.process = process
+	module.state = "active"
 	module.exitCode = nil
 	module.started = os.time()
 	module.stopped = nil
@@ -219,8 +222,9 @@ function services.start(name, manualStart)
 end
 
 ---@param name string
+---@param manual boolean?
 ---@return boolean, string?
-function services.stop(name)
+function services.stop(name, manual)
 	log_debug("stopping service ${name}", { name = name })
 	local _, isMainThread = coroutine.running()
 
@@ -243,9 +247,11 @@ function services.stop(name)
 	---@type string[]
 	local failedModules = {}
 	for moduleName, managedModule in pairs(modulesToManage) do
-		if not managedModule.process then
+		if managedModule.state ~= "active" then
 			goto CONTINUE
 		end
+
+		managedModule.state = "stopping"
 
 		table.insert(stopJobs, coroutine.create(function()
 			local group = managedModule.process:get_group()
@@ -265,10 +271,11 @@ function services.stop(name)
 				coroutine.yield()
 				local exitCode = managedModule.process:wait(100, 1000) -- wait 100ms for process to exit
 				if exitCode >= 0 then
+					managedModule.state = "stopped"
 					managedModule.exitCode = exitCode
 					managedModule.process = nil
 					managedModule.stopped = os.time()
-					managedModule.manuallyStopped = true
+					managedModule.manuallyStopped = manual == true
 					log_debug("${service}:${module} stopped", { service = serviceName, module = moduleName })
 					return
 				end
@@ -291,10 +298,11 @@ function services.stop(name)
 			killTarget:kill(signal.SIGKILL)
 			local exitCode = managedModule.process:wait(100, 1000)
 			if exitCode >= 0 then
+				managedModule.state = "stopped"
 				managedModule.exitCode = exitCode
 				managedModule.process = nil
 				managedModule.stopped = os.time()
-				managedModule.manuallyStopped = true
+				managedModule.manuallyStopped = manual == true
 				log_debug("${service}:${module} killed", { service = serviceName, module = moduleName })
 				return
 			end
@@ -352,7 +360,7 @@ function services.restart(name, manual)
 end
 
 ---@param name string
----@return AscendManagedServiceStatus|table<string, AscendManagedServiceStatus>|false
+---@return table<string, AscendManagedServiceModuleStatus>|false
 ---@return string?
 function services.status(name)
 	local service = managedServices[name]
@@ -365,14 +373,11 @@ function services.status(name)
 	for moduleName, module in pairs(service.modules) do
 		result[moduleName] = {
 			exitCode = module.exitCode,
-			active = module.process ~= nil,
+			state = module.state,
 			started = module.started,
 			stopped = module.stopped,
 		}
 		table.insert(collectedModules, moduleName)
-	end
-	if #collectedModules == 1 then
-		return result[collectedModules[1]]
 	end
 
 	return result
@@ -411,26 +416,32 @@ function services.manage(start)
 			local time = os.time()
 			for serviceName, service in pairs(managedServices) do
 				for moduleName, module in pairs(service.modules) do
-					if module.process then
+					if table.includes({ "stopping" }, module.state) then -- skip if modules is being managed by state like "stopping"
+						goto CONTINUE
+					end
+
+					if module.state == "active" then
 						local exitCode = module.process:wait(1, 1000)
 						if exitCode >= 0 then
 							log_info("${service}:${module} exited with code ${code}",
 								{ service = serviceName, module = moduleName, code = exitCode })
 							module.exitCode = exitCode
+							module.state = exitCode == 0 and "stopped" or "failed"
 							module.process = nil
 							module.stopped = time
+						else
+							goto CONTINUE                     -- if process is still running, skip the rest
 						end
 					end
+
 					local stoppedAt = module.stopped or 0
 					local timeToRestart = module.definition.restart_delay + stoppedAt < time
 					local restartsExhausted = module.definition.restart_max_retries > 0 and
 						module.restartCount >= module.definition.restart_max_retries
 
-					if module.process == nil and not module.manuallyStopped and timeToRestart and not restartsExhausted then
+					if not module.manuallyStopped and timeToRestart and not restartsExhausted then
 						local shouldStart = false
-						if module.definition.restart == "always" then
-							shouldStart = true
-						elseif module.definition.restart == "on-failure" and module.exitCode ~= 0 then
+						if module.definition.restart == "always" or (module.definition.restart == "on-failure" and module.state == "failed") then
 							shouldStart = true
 						end
 						if shouldStart then
@@ -447,6 +458,7 @@ function services.manage(start)
 							{ service = serviceName, module = moduleName })
 						module.notifiedRestartsExhausted = true
 					end
+					::CONTINUE::
 				end
 			end
 			coroutine.yield()
