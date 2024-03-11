@@ -12,6 +12,7 @@ end
 
 GLOBAL_LOGGER.options.level = args.options["log-level"] or "info"
 
+require "ascend.bootstrap" ()
 local services = require "ascend.services"
 local server = require "ascend.server"
 local tasks = require "ascend.tasks"
