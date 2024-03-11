@@ -92,7 +92,7 @@ jobs:
           context: ./containers/alpine
           platforms: linux/amd64,linux/arm64
           build-args: GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          tags: ghcr.io/alis-is/ascend:latest-alpine,ghcr.io/alis-is/ascend:${{ needs.build.outputs.VERSION }}-alpine
+          tags: ghcr.io/alis-is/ascend:latest-alpine,ghcr.io/alis-is/ascend:latest-alpine,ghcr.io/alis-is/ascend:${{ needs.build.outputs.VERSION }}-alpine
           push: true
           provenance: false
       - name: Build and publish ubuntu container
