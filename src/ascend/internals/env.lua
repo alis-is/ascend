@@ -6,7 +6,7 @@ local defaultAEnv = {
 	servicesDirectory = isUnix and "/etc/ascend/services" or "C:\\ascend\\services",
 	ipcEndpoint = "/tmp/ascend.sock",
 	logDirectory = isUnix and "/var/log/ascend" or "C:\\ascend\\logs",
-	bootstrapScript = nil --[[@as string?]]
+	initScript = nil --[[@as string?]]
 }
 
 local aenv = {
@@ -19,9 +19,9 @@ local aenv = {
 	logDirectory = args.options["log-dir"] or
 		env.get_env("ASCEND_LOGS") or
 		defaultAEnv.logDirectory,
-	bootstrapScript = args.options["bootstrap-script"] or
-		env.get_env("ASCEND_BOOTSTRAP") or
-		defaultAEnv.bootstrapScript
+	initScript = args.options["init-script"] or
+		env.get_env("ASCEND_INIT") or
+		defaultAEnv.initScript
 }
 
 ---@class AscendServiceDefinitionBase

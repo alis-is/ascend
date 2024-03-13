@@ -12,16 +12,12 @@ end
 
 GLOBAL_LOGGER.options.level = args.options["log-level"] or "info"
 
-require "ascend.bootstrap" ()
+local init = require "ascend.init"
 local services = require "ascend.services"
 local server = require "ascend.server"
 local tasks = require "ascend.tasks"
 
-local ok, err = services.init()
-if not ok then
-	log_error("failed to initialize services: ${error}", { error = err })
-	os.exit(EXIT_FAILED_TO_LOAD_SERVICES)
-end
+init.run() -- initialize ascend and services
 
 tasks.add(services.manage(true))
 tasks.add(server.listen())
