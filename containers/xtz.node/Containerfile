@@ -18,7 +18,7 @@ fi\n' > /usr/local/bin/auth_wget && chmod +x /usr/local/bin/auth_wget
 
 # Use auth_wget for downloading files with optional authentication
 RUN auth_wget https://raw.githubusercontent.com/alis-is/ami/main/install.sh -O /tmp/install.sh && sh /tmp/install.sh
-RUN auth_wget https://raw.githubusercontent.com/alis-is/ascend/main/install.sh -O /tmp/install.sh && sh /tmp/install.sh
+RUN auth_wget https://raw.githubusercontent.com/alis-is/ascend/main/tools/setup/standalone-linux.sh -O /tmp/setup-ascend.sh && sh /tmp/setup-ascend.sh --prerelease
 
 RUN addgroup -S ascend && adduser -S ascend -G ascend \
     && chown -R ascend:ascend /ascend /var/log/ascend /usr/sbin/ascend /usr/local/bin/auth_wget
