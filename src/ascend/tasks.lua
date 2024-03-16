@@ -25,7 +25,9 @@ function tasks.run(finalize)
 		end
 
 		taskQueue = newTaskQueue
-		if finalize or #taskQueue == 0 then
+		-- we want to exit only if we are finalizing and there are no more tasks
+		-- we may keep running with no tasks if we assume that there will be more tasks/services added
+		if finalize and #taskQueue == 0 then
 			break
 		end
 		os.sleep(200, 1000)

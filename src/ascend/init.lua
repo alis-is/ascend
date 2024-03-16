@@ -1,6 +1,9 @@
 local aenv = require "ascend.internals.env"
 local services = require "ascend.services"
 
+local isWindows = package.config:sub(1, 1) == "\\"
+local SILENT_REDIRECT = isWindows and "> NUL 2>&1" or ">/dev/null 2>&1"
+
 local init = {}
 
 local function ami_init()
@@ -20,7 +23,7 @@ local function ami_init()
 	local paths = fs.read_dir(appsDir, { returnFullPaths = true })
 	for _, path in ipairs(paths) do
 		if type(path) == "string" and fs.file_type(path) == "directory" then
-			if not os.execute(string.interpolate("ami --path=${path} --is-app-installed", { path = path })) then
+			if not os.execute(string.interpolate("ami --path=${path} --is-app-installed ${redirect}", { path = path, redirect = SILENT_REDIRECT })) then
 				os.execute(string.interpolate("ami --path=${path} setup", { path = path }))
 			end
 		end
