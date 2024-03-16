@@ -3,7 +3,7 @@ local services = require "ascend.services"
 
 local init = {}
 
-local function ami_init() 
+local function ami_init()
 	local appsDir = os.getenv("ASCEND_APPS")
 	if not appsDir then
 		appsDir = path.combine(path.dir(aenv.servicesDirectory), "apps")
@@ -19,7 +19,7 @@ local function ami_init()
 
 	local paths = fs.read_dir(appsDir)
 	for _, path in ipairs(paths) do
-		if fs.file_type(path) ~= "directory" then
+		if type(path) == "string" and fs.file_type(path) == "directory" then
 			if not os.execute(string.interpolate("ami --path ${path} --is-app-installed")) then
 				os.execute(string.interpolate("ami --path ${path} setup"))
 			end
