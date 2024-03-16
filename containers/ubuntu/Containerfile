@@ -4,10 +4,6 @@ RUN apt-get update && apt-get install -y wget \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# create ascend directories
-RUN mkdir -p /ascend/services
-RUN mkdir -p /var/log/ascend
-
 ENV ASCEND_SERVICES=/ascend/services
 ENV ASCEND_SOCKET=/var/run/ascend.socket
 ENV ASCEND_LOGS=/var/log/ascend

@@ -1,0 +1,8 @@
+FROM alpine:latest
+
+RUN auth_wget https://raw.githubusercontent.com/alis-is/ami/master/install.sh -O /tmp/install.sh && sh /tmp/install.sh --prerelease
+
+ENV ASCEND_APPS=/ascend/apps
+ENV APPS_BOOTSTRAP=/apps-bootstrap
+# ami - common init strategy
+ENV ASCEND_INIT=ami
