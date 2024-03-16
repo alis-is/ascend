@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM ghcr.io/alis-is/ascend:latest-alpine
 
 RUN auth_wget https://raw.githubusercontent.com/alis-is/ami/master/install.sh -O /tmp/install.sh && sh /tmp/install.sh --prerelease
 
