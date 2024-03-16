@@ -17,11 +17,11 @@ local function ami_init()
 
 	fs.copy(initDir, appsDir, { overwrite = false })
 
-	local paths = fs.read_dir(appsDir)
+	local paths = fs.read_dir(appsDir, { returnFullPaths = true })
 	for _, path in ipairs(paths) do
 		if type(path) == "string" and fs.file_type(path) == "directory" then
-			if not os.execute(string.interpolate("ami --path ${path} --is-app-installed")) then
-				os.execute(string.interpolate("ami --path ${path} setup"))
+			if not os.execute(string.interpolate("ami --path=${path} --is-app-installed", { path = path })) then
+				os.execute(string.interpolate("ami --path=${path} setup", { path = path }))
 			end
 		end
 	end
