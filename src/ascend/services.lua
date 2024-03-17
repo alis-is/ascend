@@ -2,6 +2,7 @@ local aenv = require "ascend.internals.env"
 local jobs = require("common.jobs")
 local signal = require "os.signal"
 local is_stop_requested = require "ascend.signal"
+local isWindows = package.config:sub(1, 1) == "\\"
 
 ---@class AscendManagedServiceModule
 ---@field definition AscendServiceModuleDefinition
@@ -142,12 +143,18 @@ local function start_module(module, manualStart)
 		module.restartCount = 0
 	end
 
+	if module.definition.user and isWindows then
+		log_warn("user is not supported on windows, ignoring")
+		module.definition.user = nil
+	end
+
 	local ok, process = proc.safe_spawn(module.definition.executable, module.definition.args,
 		{
 			env = module.definition.environment,
 			wait = false,
 			stdio = "inherit",
-			createProcessGroup = true
+			createProcessGroup = true,
+			username = module.definition.user
 		}) --[[@as EliProcess]]
 	if needsDirChange then
 		os.chdir(currentWorkingDir --[[@as string]])

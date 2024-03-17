@@ -24,7 +24,9 @@ local function ami_init()
 	for _, path in ipairs(paths) do
 		if type(path) == "string" and fs.file_type(path) == "directory" then
 			if not os.execute(string.interpolate("ami --path=${path} --is-app-installed ${redirect}", { path = path, redirect = SILENT_REDIRECT })) then
-				os.execute(string.interpolate("ami --path=${path} setup", { path = path }))
+				if not os.execute(string.interpolate("ami --path=${path} setup", { path = path })) then
+					error("Failed to setup app: " .. path)
+				end
 			end
 		end
 	end

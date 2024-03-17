@@ -33,6 +33,7 @@ local aenv = {
 ---@field restart "always" | "never" | "on-failure" | nil
 ---@field restart_delay number?
 ---@field restart_max_retries number?
+---@field user string?
 
 ---@class AscendServiceModuleDefinition: AscendServiceDefinitionBase
 ---@field executable string
