@@ -9,16 +9,17 @@ local ASCEND_SERVICES = os.getenv("ASCEND_SERVICES") or "/etc/ascend/services"
 local asctl = {}
 
 function asctl.exec(...)
-    local _cmd = string.join_strings(" ", ...)
-    trace("Executing asctl " .. _cmd)
-    local _proc = proc.spawn("asctl", { ... }, { stdio = { stdout = "pipe", stderr = "pipe" }, wait = true })
-    if not _proc then
-        error("Failed to execute asctl command: " .. _cmd)
+    local cmd = string.join_strings(" ", ...)
+    trace("Executing asctl " .. cmd)
+    local proc = proc.spawn("asctl", { ... }, { stdio = { stdout = "pipe", stderr = "pipe" }, wait = true }) --[[@as SpawnResult]]
+    if not proc then
+        error("Failed to execute asctl command: " .. cmd)
     end
-    trace("asctl exit code: " .. _proc.exitcode)
-    local _stderr = _proc.stderrStream:read("a")
-    local _stdout = _proc.stdoutStream:read("a")
-    return _proc.exitcode, _stdout, _stderr
+    trace("asctl exit code: " .. proc.exitcode)
+
+    local stderr = proc.stderrStream:read("a")
+    local stdout = proc.stdoutStream:read("a")
+    return proc.exitcode, stdout, stderr
 end
 
 function asctl.install_service(sourceFile, serviceName, options)
@@ -99,7 +100,7 @@ function asctl.get_service_status(serviceName)
     trace("Getting service " .. serviceName .. "status...")
     local exitcode, stdout = asctl.exec("status", serviceName)
     assert(exitcode == 0, "Failed to get service status")
-    local response = hjson.parse(stdout) --[[@as ]]
+    local response = hjson.parse(stdout) --[[@as table<string, { ok: boolean, status: table<string, AscendManagedServiceModuleStatus> }>]]
     local serviceStatus = response[serviceName].status
     local moduleStatus = serviceStatus.default
     if type(serviceStatus) ~= "table" then

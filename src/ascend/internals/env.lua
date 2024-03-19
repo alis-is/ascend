@@ -153,6 +153,7 @@ local function normalize_service_definition(definition)
 			stop_signal = module.stop_signal or normalized.stop_signal,
 			stop_timeout = module.stop_timeout or normalized.stop_timeout,
 			working_directory = module.working_directory or normalized.working_directory,
+			user = module.user or normalized.user
 		}, { overwrite = true, arrayMergeStrategy = "prefer-t1" })
 
 		module = util.merge_tables(module, serviceDefinitionDefaults)

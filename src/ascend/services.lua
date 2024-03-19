@@ -4,9 +4,11 @@ local signal = require "os.signal"
 local is_stop_requested = require "ascend.signal"
 local isWindows = package.config:sub(1, 1) == "\\"
 
+---@alias AscendManagedServiceModuleStatusKind "active" | "inactive" | "failed" | "stopped" | "stopping"
+
 ---@class AscendManagedServiceModule
 ---@field definition AscendServiceModuleDefinition
----@field state "active" | "inactive" | "failed" | "stopped" | "stopping"
+---@field state AscendManagedServiceModuleStatusKind
 ---@field process EliProcess?
 ---@field exitCode integer?
 ---@field started number?
@@ -21,7 +23,7 @@ local isWindows = package.config:sub(1, 1) == "\\"
 
 ---@class AscendManagedServiceModuleStatus
 ---@field exitCode integer?
----@field active boolean
+---@field state AscendManagedServiceModuleStatusKind
 ---@field started number?
 ---@field stopped number?
 
