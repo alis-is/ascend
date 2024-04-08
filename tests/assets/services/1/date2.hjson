@@ -1,9 +1,17 @@
 {
-	executable: bash
-	args: [
-		"./date.sh"
-	]
-	working_directory: ../tests/assets/scripts
-	restart: always
-	restart_delay: 5
+    executable: bash
+    args: [
+        ./date.sh
+    ]
+    working_directory: ../tests/assets/scripts
+    restart: always
+    restart_delay: 5
+	restart_max_retries: 1
+    healthcheck: {
+        name: exit1
+        action: restart
+        delay: 0
+		retries: 3
+		interval: 1
+    }
 }

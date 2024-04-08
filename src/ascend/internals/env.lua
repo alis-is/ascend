@@ -4,25 +4,27 @@ local isUnix = package.config:sub(1, 1) == "/"
 
 local defaultAEnv = {
 	servicesDirectory = isUnix and "/etc/ascend/services" or "C:\\ascend\\services",
+	healthchecksDirectory = isUnix and "/etc/ascend/healthchecks" or "C:\\ascend\\healthchecks",
 	ipcEndpoint = "/tmp/ascend.sock",
 	logDirectory = isUnix and "/var/log/ascend" or "C:\\ascend\\logs",
 	initScript = nil --[[@as string?]]
 }
 
-local aenv = {
-	servicesDirectory = args.options.services or
-		env.get_env("ASCEND_SERVICES") or
-		defaultAEnv.servicesDirectory,
-	ipcEndpoint = args.options.socket or
-		env.get_env("ASCEND_SOCKET") or
-		defaultAEnv.ipcEndpoint,
-	logDirectory = args.options["log-dir"] or
-		env.get_env("ASCEND_LOGS") or
-		defaultAEnv.logDirectory,
-	initScript = args.options["init-script"] or
-		env.get_env("ASCEND_INIT") or
-		defaultAEnv.initScript
-}
+local aenv = util.merge_tables({
+	servicesDirectory = args.options.services or env.get_env("ASCEND_SERVICES"),
+	healthchecksDirectory = args.options.healthchecks or env.get_env("ASCEND_HEALTHCHECKS"),
+	ipcEndpoint = args.options.socket or env.get_env("ASCEND_SOCKET"),
+	logDirectory = args.options["log-dir"] or env.get_env("ASCEND_LOGS"),
+	initScript = args.options["init"] or env.get_env("ASCEND_INIT")
+}, defaultAEnv)
+
+---@class AscendHealthCheckDefinition
+---@field name string
+---@field interval number
+---@field timeout number
+---@field retries number
+---@field delay number
+---@field action "restart" | "none"
 
 ---@class AscendServiceDefinitionBase
 ---@field environment table<string, string>?
@@ -33,13 +35,15 @@ local aenv = {
 ---@field restart "always" | "never" | "on-failure" | nil
 ---@field restart_delay number?
 ---@field restart_max_retries number?
+---@field healthcheck AscendHealthCheckDefinition?
 ---@field user string?
 
 ---@class AscendServiceModuleDefinition: AscendServiceDefinitionBase
 ---@field executable string
 ---@field args string[]?
+---@field healthcheck AscendHealthCheckDefinition?
 
----@class AscendRawServiceDefinition : AscendServiceModuleDefinition 
+---@class AscendRawServiceDefinition : AscendServiceModuleDefinition
 ---@field modules table<string, AscendServiceModuleDefinition>
 
 ---@class AscendServiceDefinition
@@ -54,7 +58,7 @@ local function validate_service_definition(definition)
 	end
 
 	for k, v in pairs(definition.modules) do
-		if k == "all" then 
+		if k == "all" then
 			return false, "module name 'all' is reserved"
 		end
 		local moduleInfo = { name = k }
@@ -104,11 +108,44 @@ local function validate_service_definition(definition)
 		end
 
 		if type(v.working_directory) ~= "string" and type(v.working_directory) ~= "nil" then
-			return false, string.interpolate("module ${name} - working_directory must be a string or undefined", moduleInfo)
+			return false,
+				string.interpolate("module ${name} - working_directory must be a string or undefined", moduleInfo)
 		end
 
 		if type(v.working_directory) == "string" and #v.working_directory == 0 then
 			return false, string.interpolate("module ${name} - working_directory must not be empty", moduleInfo)
+		end
+
+		if type(v.healthcheck) == "table" then -- healthchecks are optional so validate only if defined
+			if type(v.healthcheck.name) ~= "string" then
+				return false, string.interpolate("module ${name} - healthcheck.name must be a string", moduleInfo)
+			end
+
+			if type(v.healthcheck.action) == "string" and not table.includes({ "restart", "none" }, v.healthcheck.action) then
+				return false, string.interpolate("module ${name} - healthcheck.action must be one of: restart, none", moduleInfo)
+			end
+
+			if type(v.healthcheck.interval) ~= "number" then
+				return false, string.interpolate("module ${name} - healthcheck.interval must be a number", moduleInfo)
+			end
+
+			if type(v.healthcheck.timeout) ~= "number" then
+				return false, string.interpolate("module ${name} - healthcheck.timeout must be a number", moduleInfo)
+			end
+
+			if type(v.healthcheck.retries) ~= "number" then
+				return false, string.interpolate("module ${name} - healthcheck.retries must be a number", moduleInfo)
+			end
+			if v.healthcheck.retries <= 0 then
+				return false, string.interpolate("module ${name} - healthcheck.retries must be greater than 0", moduleInfo)
+			end
+			if type(v.healthcheck.delay) ~= "number" then
+				return false, string.interpolate("module ${name} - healthcheck.delay must be a number", moduleInfo)
+			end
+
+			if v.healthcheck.interval < 1 then
+				return false, string.interpolate("module ${name} - healthcheck.interval must be greater than 0", moduleInfo)
+			end
 		end
 	end
 
@@ -122,7 +159,15 @@ local serviceDefinitionDefaults = {
 	depends = {},
 	restart = "always",
 	restart_delay = 1,
-	restart_max_retries = 5
+	restart_max_retries = 5,
+}
+
+local serviceDefinitionHealthCheckDefaults = {
+	interval = 30,
+	timeout = 30,
+	retries = 3,
+	delay = 30,
+	action = "none"
 }
 
 ---@param definition table
@@ -135,6 +180,15 @@ local function normalize_service_definition(definition)
 			default = util.merge_tables({
 				executable = normalized.executable,
 				args = normalized.args,
+				restart = normalized.restart,
+				restart_delay = normalized.restart_delay,
+				restart_max_retries = normalized.restart_max_retries,
+				stop_signal = normalized.stop_signal,
+				stop_timeout = normalized.stop_timeout,
+				working_directory = normalized.working_directory,
+				user = normalized.user,
+				environment = normalized.environment,
+				healthcheck = normalized.healthcheck
 			}, serviceDefinitionDefaults)
 		}
 		normalized.executable = nil
@@ -145,7 +199,7 @@ local function normalize_service_definition(definition)
 		local args = util.clone(module.args)
 		module = util.merge_tables(module, {
 			args = table.map(args, tostring),
-			environment =  util.merge_tables(module.environment, normalized.environment),
+			environment = util.merge_tables(module.environment, normalized.environment),
 			depends = table.map(module.depends or normalized.depends, tostring),
 			restart = module.restart or normalized.restart,
 			restart_delay = module.restart_delay or normalized.restart_delay,
@@ -153,13 +207,18 @@ local function normalize_service_definition(definition)
 			stop_signal = module.stop_signal or normalized.stop_signal,
 			stop_timeout = module.stop_timeout or normalized.stop_timeout,
 			working_directory = module.working_directory or normalized.working_directory,
-			user = module.user or normalized.user
+			user = module.user or normalized.user,
+			healthcheck = module.healtcheck or normalized.healthcheck
 		}, { overwrite = true, arrayMergeStrategy = "prefer-t1" })
 
 		module = util.merge_tables(module, serviceDefinitionDefaults)
+		if type(module.healthcheck) == "table" then
+			module.healthcheck = util.merge_tables(module.healthcheck, serviceDefinitionHealthCheckDefaults)
+		end
+
 		normalized.modules[id] = module
 	end
-	
+
 
 	return {
 		modules = normalized.modules

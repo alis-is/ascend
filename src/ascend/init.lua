@@ -39,6 +39,7 @@ local commonInitStrategies = {
 local function run_init_hook()
 	fs.mkdirp(aenv.logDirectory)
 	fs.mkdirp(aenv.servicesDirectory)
+	fs.mkdirp(aenv.healthchecksDirectory)
 
 	if aenv.initScript ~= nil then
 		-- if is common init strategy
@@ -51,7 +52,20 @@ local function run_init_hook()
 		if aenv.initScript:sub(-4) == ".lua" then
 			dofile(aenv.initScript)
 		else -- if is shell script
-			local ok, err = os.execute(aenv.initScript)
+			-- skip options and pass through arguments
+			local args = {}
+			local lastOptionAt = 0
+			for i, arg in ipairs(arg) do
+				if arg:sub(1, 1) ~= "-" then
+					break
+				end
+				lastOptionAt = i
+			end
+			for i = lastOptionAt + 1, #arg do
+				table.insert(args, arg[i])
+			end
+
+			local ok, err = os.execute(aenv.initScript .. " " .. string.join(" ", args)) -- we pass through arguments to init script
 			if not ok then
 				error("Failed to execute init script: " .. err)
 			end

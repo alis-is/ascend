@@ -21,6 +21,7 @@ init.run() -- initialize ascend and services
 
 tasks.add(services.manage(true))
 tasks.add(server.listen())
+tasks.add(services.healthcheck())
 
 log_info("ascend started")
 tasks.run()

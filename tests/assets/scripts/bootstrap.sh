@@ -1,3 +1,3 @@
 #!/bin/bash
 
-echo "initialized"
+echo "initialized" "$@" 

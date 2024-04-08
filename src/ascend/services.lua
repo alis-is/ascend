@@ -6,6 +6,12 @@ local isWindows = package.config:sub(1, 1) == "\\"
 
 ---@alias AscendManagedServiceModuleStatusKind "active" | "inactive" | "failed" | "stopped" | "stopping"
 
+---@class AscendManagedServiceModuleHealth
+---@field state "healthy" | "unhealthy"
+---@field isCheckInProgress boolean
+---@field lastChecked number
+---@field unhealthyCheckCount number
+
 ---@class AscendManagedServiceModule
 ---@field definition AscendServiceModuleDefinition
 ---@field state AscendManagedServiceModuleStatusKind
@@ -16,6 +22,7 @@ local isWindows = package.config:sub(1, 1) == "\\"
 ---@field manuallyStopped boolean
 ---@field restartCount number
 ---@field notifiedRestartsExhausted boolean?
+---@field health AscendManagedServiceModuleHealth
 
 ---@class AscendManagedService
 ---@field modules table<string, AscendManagedServiceModule>
@@ -171,6 +178,12 @@ local function start_module(module, manualStart)
 	module.started = os.time()
 	module.stopped = nil
 	module.manuallyStopped = false
+	module.health = {
+		state = "healthy",
+		lastChecked = 0,
+		unhealthyCheckCount = 0,
+		isCheckInProgress = false
+	}
 	return true
 end
 
@@ -235,7 +248,6 @@ end
 ---@return boolean, string?
 function services.stop(name, manual)
 	log_debug("stopping service ${name}", { name = name })
-	local _, isMainThread = coroutine.running()
 
 	local serviceName, moduleName = name_to_service_module(name)
 	local service = managedServices[serviceName]
@@ -438,8 +450,13 @@ function services.manage(start)
 							module.state = exitCode == 0 and "stopped" or "failed"
 							module.process = nil
 							module.stopped = time
+						elseif module.health.state == "unhealthy" and module.definition.healthcheck.action == "restart" then
+							-- // TODO: improve, we should not use services.stop directly here
+							log_debug("${service}:${module} is unhealthy", { service = serviceName, module = moduleName })
+							services.stop(string.interpolate("${service}:${module}",
+								{ service = serviceName, module = moduleName }))
 						else
-							goto CONTINUE                     -- if process is still running, skip the rest
+							goto CONTINUE -- if process is still running, skip the rest
 						end
 					end
 
@@ -463,13 +480,114 @@ function services.manage(start)
 						end
 					end
 					if restartsExhausted and not module.notifiedRestartsExhausted then
-						log_error("${service}:${module} has exhausted restarts",
+						log_info("${service}:${module} has exhausted restarts",
 							{ service = serviceName, module = moduleName })
 						module.notifiedRestartsExhausted = true
 					end
 					::CONTINUE::
 				end
 			end
+			coroutine.yield()
+		end
+	end)
+end
+
+---@param serviceName string
+---@param moduleName string
+---@param health AscendManagedServiceModuleHealth
+---@param healthcheckDefinition AscendHealthCheckDefinition
+local function run_healthcheck(serviceName, moduleName, health, healthcheckDefinition)
+	return coroutine.create(function()
+		if health.isCheckInProgress then
+			return
+		end
+		local lastChecked = health.lastChecked
+		local interval = healthcheckDefinition.interval
+		local timeToCheck = lastChecked + interval < os.time()
+		if not timeToCheck then
+			return
+		end
+
+		health.isCheckInProgress = true
+
+		local timeout = healthcheckDefinition.timeout
+		local startTime = os.time()
+
+		log_trace("running healthcheck ${name} for ${service}:${module}",
+			{ name = healthcheckDefinition.name, service = serviceName, module = moduleName })
+		local ok, proc = proc.safe_spawn(path.combine(aenv.healthchecksDirectory, healthcheckDefinition.name),
+			{ stdio = "inherit" })
+		if not ok then
+			log_error("failed to run healthcheck for ${service}:${module} - ${error}",
+				{ service = serviceName, module = moduleName, error = proc })
+			health.state = "unhealthy"
+			health.lastChecked = os.time()
+			health.isCheckInProgress = false
+			return
+		end
+
+		while not is_stop_requested() and health.isCheckInProgress do
+			if timeout > 0 and os.time() - startTime > timeout then
+				log_info("healthcheck for ${service}:${module} timed out", { service = serviceName, module = moduleName })
+				health.state = "unhealthy"
+				health.lastChecked = os.time()
+				health.isCheckInProgress = false
+				break
+			end
+
+			local exitcode = proc:wait(1, 1000)
+			if exitcode < 0 then -- in progress
+				coroutine.yield()
+				goto CONTINUE
+			elseif exitcode == 0 then
+				health.state = "healthy"
+			elseif health.unhealthyCheckCount + 1 >= healthcheckDefinition.retries then
+				log_info("healthcheck for ${service}:${module} failed with exit code ${code}",
+					{ service = serviceName, module = moduleName, code = exitcode })
+				health.state = "unhealthy"
+			else
+				health.unhealthyCheckCount = health.unhealthyCheckCount + 1
+			end
+
+			health.lastChecked = os.time()
+			health.isCheckInProgress = false
+			::CONTINUE::
+		end
+	end)
+end
+
+---@param start boolean?
+---@return thread
+function services.healthcheck()
+	return coroutine.create(function()
+		local healthCheckJobs = {}
+
+		while not is_stop_requested() do
+			for serviceName, service in pairs(managedServices) do
+				for moduleName, module in pairs(service.modules) do
+					if module.state ~= "active" then
+						goto CONTINUE
+					end
+					local healthCheck = module.definition.healthcheck
+					local started = module.started or 0
+
+					if type(healthCheck) == "table" and started + healthCheck.delay < os.time() then
+						local job = run_healthcheck(serviceName, moduleName, module.health, healthCheck)
+						table.insert(healthCheckJobs, job)
+					end
+					::CONTINUE::
+				end
+			end
+			coroutine.yield()
+
+			local newJobs = {}
+			for _, job in ipairs(healthCheckJobs) do
+				if coroutine.status(job) ~= "dead" then
+					table.insert(newJobs, job)
+					coroutine.resume(job)
+				end
+			end
+			healthCheckJobs = newJobs
 			coroutine.yield()
 		end
 	end)
