@@ -144,6 +144,10 @@ local methodHandlers = {
 		end
 		respond(true)
 	end,
+	["ascend-health"] = function (request, respond)
+		local strict = table.includes(request.params, "strict")
+		respond({ success = true, data = services.get_ascend_health(strict) })
+	end,
 	status = function(request, respond)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return

@@ -165,7 +165,7 @@ local serviceDefinitionDefaults = {
 local serviceDefinitionHealthCheckDefaults = {
 	interval = 30,
 	timeout = 30,
-	retries = 3,
+	retries = 1,
 	delay = 30,
 	action = "none"
 }

@@ -392,11 +392,14 @@ function services.status(name)
 	local result = {}
 	local collectedModules = {}
 	for moduleName, module in pairs(service.modules) do
+		local hasHealthcheck = type(module.definition.healthcheck) == "table"
+
 		result[moduleName] = {
 			exitCode = module.exitCode,
 			state = module.state,
 			started = module.started,
 			stopped = module.stopped,
+			health = hasHealthcheck and module.state == "active" and module.health.state or nil
 		}
 		table.insert(collectedModules, moduleName)
 	end
@@ -591,6 +594,28 @@ function services.healthcheck()
 			coroutine.yield()
 		end
 	end)
+end
+
+---@param strict boolean? -- if true, only return "healthy" if all services are healthy and active
+---@return "healthy" | "unhealthy"
+function services.get_ascend_health(strict)
+	local allHealthy = true
+	for _, service in pairs(managedServices) do
+		for _, module in pairs(service.modules) do
+			if strict and module.state ~= "active" then
+				allHealthy = false
+				break
+			end
+			if module.state == "active" and module.health.state == "unhealthy" then
+				allHealthy = false
+				break
+			end
+		end
+		if not allHealthy then
+			break
+		end
+	end
+	return allHealthy and "healthy" or "unhealthy"
 end
 
 return services
