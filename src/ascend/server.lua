@@ -97,7 +97,7 @@ local methodHandlers = {
 			local success = true
 			---@type thread[]
 			local startJobs = jobs.create_queue(jobs.array_to_array_of_params(request.params), function(name)
-				local ok, err = services.start(name)
+				local ok, err = services.start(name, { manual = true })
 				success = success and ok
 				responseData[name] = {
 					ok = ok,
@@ -122,7 +122,7 @@ local methodHandlers = {
 			local success = true
 			---@type thread[]
 			local restartJobs = jobs.create_queue(jobs.array_to_array_of_params(request.params), function(name)
-				local ok, err = services.restart(name)
+				local ok, err = services.restart(name, { manual = true })
 				success = success and ok
 				responseData[name] = {
 					ok = ok,

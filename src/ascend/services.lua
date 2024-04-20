@@ -187,10 +187,18 @@ local function start_module(module, manualStart)
 	return true
 end
 
+---@class StartOptions
+---@field manual boolean?
+---@field isBoot boolean?
+
 ---@param name string
----@param manualStart boolean?
+---@param options StartOptions?
 ---@return boolean, string?
-function services.start(name, manualStart)
+function services.start(name, options)
+	if type(options) ~= "table" then
+		options = {}
+	end
+
 	local serviceName, moduleName = name_to_service_module(name)
 	local service = managedServices[serviceName]
 	if not service then
@@ -208,6 +216,10 @@ function services.start(name, manualStart)
 	---@type string[]
 	local failedModules = {}
 	for moduleName, managedModule in pairs(modulesToManage) do
+		if options.isBoot and not table.includes({ "always", "unless-stopped" }, managedModule.definition.restart)  then
+			-- if we are only starting auto-start modules, skip this module
+			goto CONTINUE
+		end
 		log_debug("starting ${name}:${module} - ${executable} from '${workingDirectory}'",
 			{
 				name = serviceName,
@@ -215,7 +227,7 @@ function services.start(name, manualStart)
 				executable = managedModule.definition.executable,
 				module = moduleName
 			})
-		local ok, err = start_module(managedModule, manualStart)
+		local ok, err = start_module(managedModule, options.manual)
 		if not ok then
 			table.insert(failedModules, moduleName)
 			log_debug("failed to start ${name}:${module} (${executable}) from '${workingDirectory}' - ${error}",
@@ -227,6 +239,7 @@ function services.start(name, manualStart)
 					error = err
 				})
 		end
+		::CONTINUE::
 	end
 
 	if #failedModules > 0 then
@@ -363,16 +376,21 @@ function services.stop_all()
 	end)
 end
 
+---@class RestartOptions: StartOptions
+
 ---@param name string
----@param manual boolean?
+---@param options RestartOptions?
 ---@return boolean, string?
-function services.restart(name, manual)
+function services.restart(name, options)
+	if type(options) ~= "table" then
+		options = {}
+	end
 	local ok, err = services.stop(name)
 	if not ok then
 		log_error("failed to stop service ${name}: ${error}", { name = name, error = err })
 		return false, err
 	end
-	local ok, err = services.start(name, manual)
+	local ok, err = services.start(name, options)
 	if not ok then
 		log_error("failed to start service ${name}: ${error}", { name = name, error = err })
 		return false, err
@@ -429,7 +447,7 @@ function services.manage(start)
 	if start then
 		for name, _ in pairs(managedServices) do
 			log_debug("starting service ${name}", { name = name })
-			local ok, err = services.start(name)
+			local ok, err = services.start(name, { isBoot = true })
 			if not ok then
 				log_error("failed to start service ${name}: ${error}", { name = name, error = err })
 			end
@@ -470,7 +488,7 @@ function services.manage(start)
 
 					if not module.manuallyStopped and timeToRestart and not restartsExhausted then
 						local shouldStart = false
-						if module.definition.restart == "always" or (module.definition.restart == "on-failure" and module.state == "failed") then
+						if module.definition.restart == "always" or module.definition.restart == "unless-stopped" or (module.definition.restart == "on-failure" and module.state == "failed") then
 							shouldStart = true
 						end
 						if shouldStart then

@@ -32,7 +32,7 @@ local aenv = util.merge_tables({
 ---@field stop_signal number?
 ---@field stop_timeout number?
 ---@field depends string[]? -- //TODO: implement
----@field restart "always" | "never" | "on-failure" | nil
+---@field restart "always" | "never" | "on-failure" | "unless-stopped" | nil
 ---@field restart_delay number?
 ---@field restart_max_retries number?
 ---@field healthcheck AscendHealthCheckDefinition?
@@ -152,6 +152,7 @@ local function validate_service_definition(definition)
 	return true
 end
 
+---@type AscendServiceDefinitionBase
 local serviceDefinitionDefaults = {
 	args = {},
 	environment = {},
