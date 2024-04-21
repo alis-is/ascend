@@ -4,6 +4,11 @@ local signal = require "os.signal"
 local is_stop_requested = require "ascend.signal"
 local isWindows = package.config:sub(1, 1) == "\\"
 
+--- active - service is running
+--- inactive - service was not yet started
+--- failed - service failed -> exit code is not 0
+--- stopped - service was stopped -> exit code was 0
+--- stopping - service is stopping
 ---@alias AscendManagedServiceModuleStatusKind "active" | "inactive" | "failed" | "stopped" | "stopping"
 
 ---@class AscendManagedServiceModuleHealth
@@ -215,8 +220,9 @@ function services.start(name, options)
 
 	---@type string[]
 	local failedModules = {}
+	local startedModules = 0
 	for moduleName, managedModule in pairs(modulesToManage) do
-		if options.isBoot and not table.includes({ "always", "unless-stopped" }, managedModule.definition.restart)  then
+		if options.isBoot and not managedModule.definition.autostart then
 			-- if we are only starting auto-start modules, skip this module
 			goto CONTINUE
 		end
@@ -238,6 +244,8 @@ function services.start(name, options)
 					module = moduleName,
 					error = err
 				})
+		else
+			startedModules = startedModules + 1
 		end
 		::CONTINUE::
 	end
@@ -251,7 +259,9 @@ function services.start(name, options)
 			string.interpolate(resultMessage,
 				{ name = serviceName, modules = string.join(",", table.unpack(failedModules)) })
 	end
-	log_info("${name} started", { name = name })
+	if startedModules > 0 then
+		log_info("${name} started", { name = name })
+	end
 
 	return true
 end
@@ -462,6 +472,10 @@ function services.manage(start)
 						goto CONTINUE
 					end
 
+					if module.state == "inactive" then -- modules which are not started automatically or manually
+						goto CONTINUE
+					end
+
 					if module.state == "active" then
 						local exitCode = module.process:wait(1, 1000)
 						if exitCode >= 0 then
@@ -488,7 +502,9 @@ function services.manage(start)
 
 					if not module.manuallyStopped and timeToRestart and not restartsExhausted then
 						local shouldStart = false
-						if module.definition.restart == "always" or module.definition.restart == "unless-stopped" or (module.definition.restart == "on-failure" and module.state == "failed") then
+						if module.definition.restart == "always" or
+							(module.definition.restart == "on-success" and module.state == "stopped") or
+							(module.definition.restart == "on-failure" and module.state == "failed") then
 							shouldStart = true
 						end
 						if shouldStart then

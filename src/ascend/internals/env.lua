@@ -32,7 +32,8 @@ local aenv = util.merge_tables({
 ---@field stop_signal number?
 ---@field stop_timeout number?
 ---@field depends string[]? -- //TODO: implement
----@field restart "always" | "never" | "on-failure" | "unless-stopped" | nil
+---@field autostart boolean?
+---@field restart "always" | "never" | "on-failure" | "on-success" | nil
 ---@field restart_delay number?
 ---@field restart_max_retries number?
 ---@field healthcheck AscendHealthCheckDefinition?
@@ -158,6 +159,7 @@ local serviceDefinitionDefaults = {
 	environment = {},
 	stop_signal = signal.SIGTERM,
 	depends = {},
+	autostart = true,
 	restart = "always",
 	restart_delay = 1,
 	restart_max_retries = 5,
@@ -181,6 +183,8 @@ local function normalize_service_definition(definition)
 			default = util.merge_tables({
 				executable = normalized.executable,
 				args = normalized.args,
+				depends = normalized.depends,
+				autostart = normalized.autostart,
 				restart = normalized.restart,
 				restart_delay = normalized.restart_delay,
 				restart_max_retries = normalized.restart_max_retries,
@@ -202,6 +206,7 @@ local function normalize_service_definition(definition)
 			args = table.map(args, tostring),
 			environment = util.merge_tables(module.environment, normalized.environment),
 			depends = table.map(module.depends or normalized.depends, tostring),
+			autoStart = module.autoStart or normalized.autoStart,
 			restart = module.restart or normalized.restart,
 			restart_delay = module.restart_delay or normalized.restart_delay,
 			restart_max_retries = module.restart_max_retries or normalized.restart_max_retries,
