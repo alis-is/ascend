@@ -18,6 +18,9 @@ local server = require "ascend.server"
 local tasks = require "ascend.tasks"
 
 init.run() -- initialize ascend and services
+if args.command == "init-only" or args.options["init-only"] then
+	os.exit(0)
+end
 
 tasks.add(services.manage(true))
 tasks.add(server.listen())
