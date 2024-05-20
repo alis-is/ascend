@@ -19,13 +19,12 @@ fi
 
 # install eli
 echo "Downloading eli setup script..."
-# TODO: remove prerelease after eli 0.32.0 lands
 if ! "$@" https://raw.githubusercontent.com/alis-is/eli/master/install.sh; then
     echo "Failed to download eli, please retry ... "
     rm "$TMP_NAME"
     exit 1
 fi
-if ! sh "$TMP_NAME" --prerelease; then
+if ! sh "$TMP_NAME"; then
     echo "Failed to install eli, please retry ... "
     rm "$TMP_NAME"
     exit 1
