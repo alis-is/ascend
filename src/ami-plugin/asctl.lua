@@ -22,6 +22,10 @@ function asctl.exec(...)
     return proc.exitcode, stdout, stderr
 end
 
+function asctl.with_options(options)
+    warn("options are not supported by asctl right now")
+end
+
 function asctl.install_service(sourceFile, serviceName, options)
     if type(options) ~= "table" then
         options = {}
