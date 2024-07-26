@@ -24,6 +24,7 @@ end
 
 function asctl.with_options(options)
     warn("options are not supported by asctl right now")
+    return asctl
 end
 
 function asctl.install_service(sourceFile, serviceName, options)
