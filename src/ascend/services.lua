@@ -9,7 +9,7 @@ local isWindows = package.config:sub(1, 1) == "\\"
 --- failed - service failed -> exit code is not 0
 --- stopped - service was stopped -> exit code was 0
 --- stopping - service is stopping
----@alias AscendManagedServiceModuleStatusKind "active" | "inactive" | "failed" | "stopped" | "stopping"
+---@alias AscendManagedServiceModuleStatusKind "active" | "inactive" | "failed" | "stopped" | "stopping" | "to-be-started"
 
 ---@class AscendManagedServiceModuleHealth
 ---@field state "healthy" | "unhealthy"
@@ -23,6 +23,7 @@ local isWindows = package.config:sub(1, 1) == "\\"
 ---@field process EliProcess?
 ---@field exitCode integer?
 ---@field started number?
+---@field toBeStartedAt number?
 ---@field stopped number?
 ---@field manuallyStopped boolean
 ---@field restartCount number
@@ -222,9 +223,17 @@ function services.start(name, options)
 	local failedModules = {}
 	local startedModules = 0
 	for moduleName, managedModule in pairs(modulesToManage) do
-		if options.isBoot and not managedModule.definition.autostart then
-			-- if we are only starting auto-start modules, skip this module
-			goto CONTINUE
+		if options.isBoot then
+			if not managedModule.definition.autostart then
+				-- if we are only starting auto-start modules, skip this module
+				goto CONTINUE
+			end
+
+			if type(managedModule.definition.start_delay) == "number" then
+				managedModule.toBeStartedAt = os.time() + managedModule.definition.start_delay
+				managedModule.state = "to-be-started"
+				goto CONTINUE
+			end
 		end
 		log_debug("starting ${name}:${module} - ${executable} from '${workingDirectory}'",
 			{
@@ -473,6 +482,18 @@ function services.manage(start)
 					end
 
 					if module.state == "inactive" then -- modules which are not started automatically or manually
+						goto CONTINUE
+					end
+
+					if module.state == "to-be-started" then
+						if module.toBeStartedAt < time then
+							log_debug("delayed start of ${service}:${module}", { service = serviceName, module = moduleName })
+							local ok, err = start_module(module)
+							if not ok then
+								log_error("failed to start ${service}:${module} - ${error}",
+									{ service = serviceName, module = moduleName, error = err })
+							end
+						end
 						goto CONTINUE
 					end
 

@@ -33,6 +33,7 @@ local aenv = util.merge_tables({
 ---@field stop_timeout number?
 ---@field depends string[]? -- //TODO: implement
 ---@field autostart boolean?
+---@field start_delay number?
 ---@field restart "always" | "never" | "on-failure" | "on-success" | nil
 ---@field restart_delay number?
 ---@field restart_max_retries number?
@@ -185,6 +186,7 @@ local function normalize_service_definition(definition)
 				args = normalized.args,
 				depends = normalized.depends,
 				autostart = normalized.autostart,
+				start_delay = normalized.start_delay,
 				restart = normalized.restart,
 				restart_delay = normalized.restart_delay,
 				restart_max_retries = normalized.restart_max_retries,
@@ -207,6 +209,7 @@ local function normalize_service_definition(definition)
 			environment = util.merge_tables(module.environment, normalized.environment),
 			depends = table.map(module.depends or normalized.depends, tostring),
 			autoStart = module.autoStart or normalized.autoStart,
+			start_delay = module.start_delay or normalized.start_delay,
 			restart = module.restart or normalized.restart,
 			restart_delay = module.restart_delay or normalized.restart_delay,
 			restart_max_retries = module.restart_max_retries or normalized.restart_max_retries,
