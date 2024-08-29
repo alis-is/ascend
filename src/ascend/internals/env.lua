@@ -121,7 +121,7 @@ local function validate_service_definition(definition)
 
 		if type(v.output) ~= "string" or #v.output == 0 then
 			return false, string.interpolate("module ${name} - output must be a string", moduleInfo)
-		elseif v.output ~= "inherit" or not v.output:match("^file:[^\n]+$") then
+		elseif v.output ~= "inherit" and not v.output:match("^file:[^\n]+$") then
 			return false, string.interpolate("module ${name} - output must start with 'file:'", moduleInfo)
 		end
 
