@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-doc-param
+
 --- Log module
 ---@param id string
 return function(id)

@@ -163,11 +163,32 @@ local function start_module(module, manualStart)
 		module.definition.user = nil
 	end
 
+	---@type string | file*
+	local output = "inherit"
+	local filePath = output--[[@as string]]:match("^file:([^\n]+)$")
+	if filePath then
+		if not path.isabs(filePath) then
+			filePath = path.combine(aenv.logDirectory, filePath)
+		end
+		fs.safe_mkdirp(path.dirname(filePath))
+
+		local outputFile = io.open(filePath, "a")
+		if not outputFile then
+			return false, string.interpolate("failed to open file ${file} for writing", { file = filePath })
+		end
+		output = outputFile
+		output:write(" -- service start --\n")
+	end
+
 	local ok, process = proc.safe_spawn(module.definition.executable, module.definition.args,
 		{
 			env = module.definition.environment,
 			wait = false,
-			stdio = "inherit",
+			stdio = {
+				stdin = "inherit",
+				stdout = output,
+				stderr = output
+			},
 			createProcessGroup = true,
 			username = module.definition.user
 		}) --[[@as EliProcess]]
@@ -574,7 +595,7 @@ local function run_healthcheck(serviceName, moduleName, health, healthcheckDefin
 		log_trace("running healthcheck ${name} for ${service}:${module}",
 			{ name = healthcheckDefinition.name, service = serviceName, module = moduleName })
 		local ok, proc = proc.safe_spawn(path.combine(aenv.healthchecksDirectory, healthcheckDefinition.name),
-			{ stdio = "inherit" })
+			{ stdio = "inherit" }) 
 		if not ok then
 			log_error("failed to run healthcheck for ${service}:${module} - ${error}",
 				{ service = serviceName, module = moduleName, error = proc })
@@ -593,7 +614,7 @@ local function run_healthcheck(serviceName, moduleName, health, healthcheckDefin
 				break
 			end
 
-			local exitcode = proc:wait(1, 1000)
+			local exitcode = proc--[[@as EliProcess]]:wait(1, 1000)
 			if exitcode < 0 then -- in progress
 				coroutine.yield()
 				goto CONTINUE
@@ -614,7 +635,6 @@ local function run_healthcheck(serviceName, moduleName, health, healthcheckDefin
 	end)
 end
 
----@param start boolean?
 ---@return thread
 function services.healthcheck()
 	return coroutine.create(function()

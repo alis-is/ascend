@@ -39,6 +39,7 @@ local aenv = util.merge_tables({
 ---@field restart_max_retries number?
 ---@field healthcheck AscendHealthCheckDefinition?
 ---@field user string?
+---@field output "inherit" | string
 
 ---@class AscendServiceModuleDefinition: AscendServiceDefinitionBase
 ---@field executable string
@@ -118,6 +119,12 @@ local function validate_service_definition(definition)
 			return false, string.interpolate("module ${name} - working_directory must not be empty", moduleInfo)
 		end
 
+		if type(v.output) ~= "string" or #v.output == 0 then
+			return false, string.interpolate("module ${name} - output must be a string", moduleInfo)
+		elseif v.output ~= "inherit" or not v.output:match("^file:[^\n]+$") then
+			return false, string.interpolate("module ${name} - output must start with 'file:'", moduleInfo)
+		end
+
 		if type(v.healthcheck) == "table" then -- healthchecks are optional so validate only if defined
 			if type(v.healthcheck.name) ~= "string" then
 				return false, string.interpolate("module ${name} - healthcheck.name must be a string", moduleInfo)
@@ -164,6 +171,7 @@ local serviceDefinitionDefaults = {
 	restart = "always",
 	restart_delay = 1,
 	restart_max_retries = 5,
+	output = "inherit"
 }
 
 local serviceDefinitionHealthCheckDefaults = {
@@ -195,7 +203,8 @@ local function normalize_service_definition(definition)
 				working_directory = normalized.working_directory,
 				user = normalized.user,
 				environment = normalized.environment,
-				healthcheck = normalized.healthcheck
+				healthcheck = normalized.healthcheck,
+				output = normalized.output
 			}, serviceDefinitionDefaults)
 		}
 		normalized.executable = nil
@@ -207,8 +216,8 @@ local function normalize_service_definition(definition)
 		module = util.merge_tables(module, {
 			args = table.map(args, tostring),
 			environment = util.merge_tables(module.environment, normalized.environment),
-			depends = table.map(module.depends or normalized.depends, tostring),
-			autoStart = module.autoStart or normalized.autoStart,
+			depends = table.map(module.depends or normalized.depends or {}, tostring),
+			autostart = module.autostart or normalized.autostart,
 			start_delay = module.start_delay or normalized.start_delay,
 			restart = module.restart or normalized.restart,
 			restart_delay = module.restart_delay or normalized.restart_delay,
@@ -217,7 +226,8 @@ local function normalize_service_definition(definition)
 			stop_timeout = module.stop_timeout or normalized.stop_timeout,
 			working_directory = module.working_directory or normalized.working_directory,
 			user = module.user or normalized.user,
-			healthcheck = module.healtcheck or normalized.healthcheck
+			healthcheck = module.healthcheck or normalized.healthcheck,
+			output = module.output or normalized.output
 		}, { overwrite = true, arrayMergeStrategy = "prefer-t1" })
 
 		module = util.merge_tables(module, serviceDefinitionDefaults)
