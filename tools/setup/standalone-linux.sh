@@ -19,7 +19,7 @@ fi
 
 # install eli
 echo "Downloading eli setup script..."
-if ! "$@" https://raw.githubusercontent.com/alis-is/eli/master/install.sh; then
+if ! "$@" https://raw.githubusercontent.com/alis-is/eli/main/install.sh; then
     echo "Failed to download eli, please retry ... "
     rm "$TMP_NAME"
     exit 1
