@@ -165,12 +165,12 @@ local function start_module(module, manualStart)
 
 	---@type string | file*
 	local output = module.definition.output or "inherit"
-	local filePath = output--[[@as string]]:match("^file:([^\n]+)$")
+	local filePath = output --[[@as string]]:match("^file:([^\n]+)$")
 	if filePath then
 		if not path.isabs(filePath) then
 			filePath = path.combine(aenv.logDirectory, filePath)
 		end
-		fs.safe_mkdirp(path.dirname(filePath))
+		fs.safe_mkdirp(path.dir(filePath))
 
 		local outputFile = io.open(filePath, "a")
 		if not outputFile then
@@ -508,7 +508,8 @@ function services.manage(start)
 
 					if module.state == "to-be-started" then
 						if module.toBeStartedAt < time then
-							log_debug("delayed start of ${service}:${module}", { service = serviceName, module = moduleName })
+							log_debug("delayed start of ${service}:${module}",
+								{ service = serviceName, module = moduleName })
 							local ok, err = start_module(module)
 							if not ok then
 								log_error("failed to start ${service}:${module} - ${error}",
@@ -595,7 +596,7 @@ local function run_healthcheck(serviceName, moduleName, health, healthcheckDefin
 		log_trace("running healthcheck ${name} for ${service}:${module}",
 			{ name = healthcheckDefinition.name, service = serviceName, module = moduleName })
 		local ok, proc = proc.safe_spawn(path.combine(aenv.healthchecksDirectory, healthcheckDefinition.name),
-			{ stdio = "inherit" }) 
+			{ stdio = "inherit" })
 		if not ok then
 			log_error("failed to run healthcheck for ${service}:${module} - ${error}",
 				{ service = serviceName, module = moduleName, error = proc })
@@ -614,7 +615,7 @@ local function run_healthcheck(serviceName, moduleName, health, healthcheckDefin
 				break
 			end
 
-			local exitcode = proc--[[@as EliProcess]]:wait(1, 1000)
+			local exitcode = proc --[[@as EliProcess]]:wait(1, 1000)
 			if exitcode < 0 then -- in progress
 				coroutine.yield()
 				goto CONTINUE
