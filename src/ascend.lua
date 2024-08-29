@@ -1,4 +1,4 @@
-#!/usr/sbin/eli
+#!/usr/bin/env eli
 
 require "common.globals"
 require "common.log" ("ascend")
