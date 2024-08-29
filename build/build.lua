@@ -46,7 +46,7 @@ end
 
 local function inject_license(filePath)
 	local _content = fs.read_file(filePath)
-	local _, _shebangEnd = _content:find("#!/%S*")
+	local _, _shebangEnd = _content:find("#!/[^\n]*")
 	local _license = [[
 -- Copyright (C) 2024 alis.is
 
