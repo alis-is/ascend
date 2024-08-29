@@ -164,7 +164,7 @@ local function start_module(module, manualStart)
 	end
 
 	---@type string | file*
-	local output = "inherit"
+	local output = module.definition.output or "inherit"
 	local filePath = output--[[@as string]]:match("^file:([^\n]+)$")
 	if filePath then
 		if not path.isabs(filePath) then
