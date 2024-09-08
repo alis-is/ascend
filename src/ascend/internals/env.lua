@@ -1,5 +1,6 @@
 local signal = require "os.signal"
 local args = require "common.args"
+local input = require "common.input"
 local isUnix = package.config:sub(1, 1) == "/"
 
 local defaultAEnv = {
@@ -39,7 +40,10 @@ local aenv = util.merge_tables({
 ---@field restart_max_retries number?
 ---@field healthcheck AscendHealthCheckDefinition?
 ---@field user string?
----@field output "inherit" | string
+---@field log_file string?
+---@field log_rotate boolean
+---@field log_max_size number
+---@field log_max_files number
 
 ---@class AscendServiceModuleDefinition: AscendServiceDefinitionBase
 ---@field executable string
@@ -119,10 +123,23 @@ local function validate_service_definition(definition)
 			return false, string.interpolate("module ${name} - working_directory must not be empty", moduleInfo)
 		end
 
-		if type(v.output) ~= "string" or #v.output == 0 then
-			return false, string.interpolate("module ${name} - output must be a string", moduleInfo)
-		elseif v.output ~= "inherit" and not v.output:match("^file:[^\n]+$") then
-			return false, string.interpolate("module ${name} - output must start with 'file:'", moduleInfo)
+		if type(v.log_file) == "string" and path.isabs(v.log_file) then
+			local dir = path.dir(v.log_file)
+			if not fs.exists(dir) then
+				return false, string.interpolate("module ${name} - log_file directory ${dir} does not exist", { name = k, dir = dir })
+			end
+		end
+
+		if type(v.log_rotate) ~= "boolean" then
+			return false, string.interpolate("module ${name} - log_rotate must be a boolean", moduleInfo)
+		end
+
+		if type(v.log_max_files) ~= "number" then
+			return false, string.interpolate("module ${name} - log_max_files must be a number", moduleInfo)
+		end
+
+		if type(input.parse_size_value(v.log_max_size)) ~= "number" then
+			return false, string.interpolate("module ${name} - log_max_size must be a number (accepts k, m, g suffixes)", moduleInfo)
 		end
 
 		if type(v.healthcheck) == "table" then -- healthchecks are optional so validate only if defined
@@ -171,7 +188,9 @@ local serviceDefinitionDefaults = {
 	restart = "always",
 	restart_delay = 1,
 	restart_max_retries = 5,
-	output = "inherit"
+	log_rotate = true,
+	log_max_size = tonumber(os.getenv("ASCEND_LOG_MAX_FILE_SIZE")) or 1024 * 1024 * 10,
+	log_max_files = tonumber(os.getenv("ASCEND_LOG_MAX_FILE_COUNT")) or 5
 }
 
 local serviceDefinitionHealthCheckDefaults = {
@@ -182,9 +201,10 @@ local serviceDefinitionHealthCheckDefaults = {
 	action = "none"
 }
 
+---@param name string
 ---@param definition table
 ---@return AscendServiceDefinition
-local function normalize_service_definition(definition)
+local function normalize_service_definition(name, definition)
 	local normalized = util.merge_tables(definition, serviceDefinitionDefaults)
 	normalized.args = table.map(normalized.args, tostring)
 	if type(normalized.modules) ~= "table" then
@@ -204,7 +224,10 @@ local function normalize_service_definition(definition)
 				user = normalized.user,
 				environment = normalized.environment,
 				healthcheck = normalized.healthcheck,
-				output = normalized.output
+				log_file = path.combine(name, "default.log"),
+				log_rotate = normalized.log_rotate,
+				log_max_size = normalized.log_max_size,
+				log_max_files = normalized.log_max_files
 			}, serviceDefinitionDefaults)
 		}
 		normalized.executable = nil
@@ -227,7 +250,10 @@ local function normalize_service_definition(definition)
 			working_directory = module.working_directory or normalized.working_directory,
 			user = module.user or normalized.user,
 			healthcheck = module.healthcheck or normalized.healthcheck,
-			output = module.output or normalized.output
+			log_file = module.log_file or path.combine(name, id .. ".log"),
+			log_rotate = module.log_rotate or normalized.log_rotate,
+			log_max_size = module.log_max_size or normalized.log_max_size,
+			log_max_files = module.log_max_files or normalized.log_max_files
 		}, { overwrite = true, arrayMergeStrategy = "prefer-t1" })
 
 		module = util.merge_tables(module, serviceDefinitionDefaults)
@@ -245,9 +271,10 @@ local function normalize_service_definition(definition)
 end
 
 ---@param name string
+---@param filename string
 ---@return AscendServiceDefinition?, string?
-local function load_service_definition(name)
-	local ok, def = fs.safe_read_file(name)
+local function load_service_definition(name, filename)
+	local ok, def = fs.safe_read_file(filename)
 	if not ok then
 		return nil, def
 	end
@@ -260,12 +287,12 @@ local function load_service_definition(name)
 		return nil, "service definition must be an JSON object"
 	end
 
-	local completeServiceDef = normalize_service_definition(serviceDef)
+	local completeServiceDef = normalize_service_definition(name, serviceDef)
 	local ok, err = validate_service_definition(completeServiceDef)
 	if not ok then
 		return nil, string.join_strings(" - ", "failed to validate service definition", err)
 	end
-	completeServiceDef.source = name
+	completeServiceDef.source = filename
 	return completeServiceDef
 end
 
@@ -286,7 +313,7 @@ function aenv.load_service_definitions()
 		if ext ~= "hjson" then
 			goto continue
 		end
-		local service, err = load_service_definition(def)
+		local service, err = load_service_definition(name, def)
 		if not service then
 			log_error("failed to load service ${name}: ${error}", { name = name, error = err })
 			goto continue

@@ -3,6 +3,7 @@ local jobs = require("common.jobs")
 local signal = require "os.signal"
 local is_stop_requested = require "ascend.signal"
 local isWindows = package.config:sub(1, 1) == "\\"
+local log = require "ascend.log"
 
 --- active - service is running
 --- inactive - service was not yet started
@@ -21,7 +22,7 @@ local isWindows = package.config:sub(1, 1) == "\\"
 ---@field definition AscendServiceModuleDefinition
 ---@field state AscendManagedServiceModuleStatusKind
 ---@field process EliProcess?
----@field exitCode integer?
+---@field exit_code integer?
 ---@field started number?
 ---@field toBeStartedAt number?
 ---@field stopped number?
@@ -29,13 +30,15 @@ local isWindows = package.config:sub(1, 1) == "\\"
 ---@field restartCount number
 ---@field notifiedRestartsExhausted boolean?
 ---@field health AscendManagedServiceModuleHealth
+---@field __output EliReadableStream?
+---@field __output_file AscendRotatingLogFile?
 
 ---@class AscendManagedService
 ---@field modules table<string, AscendManagedServiceModule>
 ---@field source string
 
 ---@class AscendManagedServiceModuleStatus
----@field exitCode integer?
+---@field exit_code integer?
 ---@field state AscendManagedServiceModuleStatusKind
 ---@field started number?
 ---@field stopped number?
@@ -63,7 +66,7 @@ local function new_managed_module(definition)
 		definition = definition,
 		state = "inactive",
 		process = nil,
-		exitCode = nil,
+		exit_code = nil,
 		started = nil,
 		stopped = nil,
 		manuallyStopped = false,
@@ -163,31 +166,13 @@ local function start_module(module, manualStart)
 		module.definition.user = nil
 	end
 
-	---@type string | file*
-	local output = module.definition.output or "inherit"
-	local filePath = output --[[@as string]]:match("^file:([^\n]+)$")
-	if filePath then
-		if not path.isabs(filePath) then
-			filePath = path.combine(aenv.logDirectory, filePath)
-		end
-		fs.safe_mkdirp(path.dir(filePath))
-
-		local outputFile = io.open(filePath, "a")
-		if not outputFile then
-			return false, string.interpolate("failed to open file ${file} for writing", { file = filePath })
-		end
-		output = outputFile
-		output:write(" -- service start --\n")
-	end
-
 	local ok, process = proc.safe_spawn(module.definition.executable, module.definition.args,
 		{
 			env = module.definition.environment,
 			wait = false,
 			stdio = {
-				stdin = "inherit",
-				stdout = output,
-				stderr = output
+				stdin = "ignore",
+				output = "pipe",
 			},
 			createProcessGroup = true,
 			username = module.definition.user
@@ -201,7 +186,7 @@ local function start_module(module, manualStart)
 
 	module.process = process
 	module.state = "active"
-	module.exitCode = nil
+	module.exit_code = nil
 	module.started = os.time()
 	module.stopped = nil
 	module.manuallyStopped = false
@@ -211,6 +196,10 @@ local function start_module(module, manualStart)
 		unhealthyCheckCount = 0,
 		isCheckInProgress = false
 	}
+	module.__output = process:get_stdout() -- stdout and stderr are combined because of `output = "pipe"`
+	module.__output_file = module.__output_file or log.create_log_file(module.definition)
+	module.__output_file:write(" -- service start --\n")
+
 	return true
 end
 
@@ -296,6 +285,22 @@ function services.start(name, options)
 	return true
 end
 
+---@param module AscendManagedServiceModule
+---@param exit_code integer
+---@param manual boolean?
+local function update_module_state_to_stopepd(module, exit_code,  manual)
+	module.state = "stopped"
+	module.exit_code = exit_code
+	module.process = nil
+	module.stopped = os.time()
+	module.manuallyStopped = manual == true
+
+	log.collect_output(module) -- collect the last output
+	module.__output_file:write(" -- service stop --\n")
+	module.__output_file:close()
+	module.__output_file = nil
+end
+
 ---@param name string
 ---@param manual boolean?
 ---@return boolean, string?
@@ -308,8 +313,8 @@ function services.stop(name, manual)
 		return false, string.interpolate("service ${name} not found", { name = serviceName })
 	end
 
-	local modulesToManage = moduleName == "all" and service.modules or { moduleName = service.modules[moduleName] }
-	local modulesToManageCount = #table.keys(modulesToManage)
+	local modulesToStop = moduleName == "all" and service.modules or { moduleName = service.modules[moduleName] }
+	local modulesToManageCount = #table.keys(modulesToStop)
 	if modulesToManageCount == 0 then
 		return false,
 			string.interpolate("module ${module} not found in service ${service}",
@@ -320,36 +325,32 @@ function services.stop(name, manual)
 
 	---@type string[]
 	local failedModules = {}
-	for moduleName, managedModule in pairs(modulesToManage) do
-		if managedModule.state ~= "active" then
+	for moduleName, module in pairs(modulesToStop) do
+		if module.state ~= "active" then
 			goto CONTINUE
 		end
 
-		managedModule.state = "stopping"
+		module.state = "stopping"
 
 		table.insert(stopJobs, coroutine.create(function()
-			local group = managedModule.process:get_group()
-			local killTarget = group or managedModule.process -- we kill group by default to kill all children
+			local group = module.process:get_group()
+			local killTarget = group or module.process -- we kill group by default to kill all children
 			if killTarget == nil then return end
-			local signalSent, err, code = killTarget:kill(managedModule.definition.stop_signal or signal.SIGTERM)
+			local signalSent, err, code = killTarget:kill(module.definition.stop_signal or signal.SIGTERM)
 			if code == 3 and group ~= nil then
-				killTarget = managedModule.process
+				killTarget = module.process
 				if killTarget == nil then return end
-				signalSent, err = killTarget:kill(managedModule.definition.stop_signal or signal.SIGTERM)
+				signalSent, err = killTarget:kill(module.definition.stop_signal or signal.SIGTERM)
 			end
 
-			local timeout = managedModule.definition.stop_timeout or 10
+			local timeout = module.definition.stop_timeout or 10
 			-- get date in seconds
 			local startTime = os.time()
 			while os.time() - startTime < timeout + 1 do
 				coroutine.yield()
-				local exitCode = managedModule.process:wait(100, 1000) -- wait 100ms for process to exit
-				if exitCode >= 0 then
-					managedModule.state = "stopped"
-					managedModule.exitCode = exitCode
-					managedModule.process = nil
-					managedModule.stopped = os.time()
-					managedModule.manuallyStopped = manual == true
+				local exit_code = module.process:wait(100, 1000) -- wait 100ms for process to exit
+				if exit_code >= 0 then
+					update_module_state_to_stopepd(module, exit_code, manual)
 					log_debug("${service}:${module} stopped", { service = serviceName, module = moduleName })
 					return
 				end
@@ -370,13 +371,9 @@ function services.stop(name, manual)
 
 			-- force termination
 			killTarget:kill(signal.SIGKILL)
-			local exitCode = managedModule.process:wait(100, 1000)
-			if exitCode >= 0 then
-				managedModule.state = "stopped"
-				managedModule.exitCode = exitCode
-				managedModule.process = nil
-				managedModule.stopped = os.time()
-				managedModule.manuallyStopped = manual == true
+			local exit_code = module.process:wait(10, 1000)
+			if exit_code >= 0 then
+				update_module_state_to_stopepd(module, exit_code, manual)
 				log_debug("${service}:${module} killed", { service = serviceName, module = moduleName })
 				return
 			end
@@ -453,7 +450,7 @@ function services.status(name)
 		local hasHealthcheck = type(module.definition.healthcheck) == "table"
 
 		result[moduleName] = {
-			exitCode = module.exitCode,
+			exit_code = module.exit_code,
 			state = module.state,
 			started = module.started,
 			stopped = module.stopped,
@@ -498,6 +495,8 @@ function services.manage(start)
 			local time = os.time()
 			for serviceName, service in pairs(managedServices) do
 				for moduleName, module in pairs(service.modules) do
+					log.collect_output(module)
+
 					if table.includes({ "stopping" }, module.state) then -- skip if modules is being managed by state like "stopping"
 						goto CONTINUE
 					end
@@ -520,12 +519,12 @@ function services.manage(start)
 					end
 
 					if module.state == "active" then
-						local exitCode = module.process:wait(1, 1000)
-						if exitCode >= 0 then
+						local exit_code = module.process:wait(1, 1000)
+						if exit_code >= 0 then
 							log_info("${service}:${module} exited with code ${code}",
-								{ service = serviceName, module = moduleName, code = exitCode })
-							module.exitCode = exitCode
-							module.state = exitCode == 0 and "stopped" or "failed"
+								{ service = serviceName, module = moduleName, code = exit_code })
+							module.exit_code = exit_code
+							module.state = exit_code == 0 and "stopped" or "failed"
 							module.process = nil
 							module.stopped = time
 						elseif module.health.state == "unhealthy" and module.definition.healthcheck.action == "restart" then
