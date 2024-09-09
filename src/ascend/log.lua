@@ -35,6 +35,7 @@ end
 ---@field private current_size number
 ---@field write fun(self: AscendRotatingLogFile, message: string)
 ---@field close fun(self: AscendRotatingLogFile)
+---@field get_filename fun(self: AscendRotatingLogFile): string
 
 ---@param module_definition AscendServiceModuleDefinition
 ---@return AscendRotatingLogFile
@@ -98,6 +99,10 @@ function log.create_log_file(module_definition)
         end
     end
 
+    function log_file:get_filename()
+        return self.filename
+    end
+
     -- Function to close the log file
     function log_file:close()
         if self.current_file then
@@ -125,7 +130,6 @@ function log.collect_output(module)
     if module.__output_file == nil then
         return nil
     end
-
     module.__output_file:write(module.__output:read("a")) -- Write the output to the log file
 end
 

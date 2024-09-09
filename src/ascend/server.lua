@@ -49,11 +49,15 @@ local function check_is_array_of_strings(params)
 end
 
 local function check_manages_just_managed_services(params)
+	if not table.is_array(params) then
+		params = { params }
+	end
 	for _, name in ipairs(params) do
 		if not services.is_managed(name) then
 			return false, "service is not found"
 		end
 	end
+
 	return true
 end
 
@@ -182,11 +186,24 @@ local methodHandlers = {
 		end))
 	end,
 	logs = function(request, respond)
-		-- // TODO: implement
-		respond(nil, {
-			code = jsonrpc.error_codes.INTERNAL_ERROR,
-			message = "not implemented"
-		})
+		if not check_params(request.params, check_is_array_of_strings, respond) then
+			return
+		end
+
+		if not check_params(request.params, check_manages_just_managed_services, respond) then
+			return
+		end
+
+		local result = {}
+		for _, name in ipairs(request.params) do
+			local serviceName, logFilesOrError = services.logs(name)
+			if not serviceName then
+				result[name] = logFilesOrError
+			else
+				result[serviceName] = logFilesOrError
+			end
+		end
+		respond({ success = true, data = result })
 	end,
 	list = function(_, respond)
 		respond({

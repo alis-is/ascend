@@ -30,7 +30,7 @@ function tasks.run(finalize)
 		if finalize and #taskQueue == 0 then
 			break
 		end
-		os.sleep(200, 1000)
+		os.sleep(100, 1000)
 	end
 end
 

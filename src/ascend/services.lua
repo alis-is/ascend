@@ -197,6 +197,7 @@ local function start_module(module, manualStart)
 		isCheckInProgress = false
 	}
 	module.__output = process:get_stdout() -- stdout and stderr are combined because of `output = "pipe"`
+	module.__output:set_nonblocking(true)
 	module.__output_file = module.__output_file or log.create_log_file(module.definition)
 	module.__output_file:write(" -- service start --\n")
 
@@ -221,7 +222,7 @@ function services.start(name, options)
 		return false, string.interpolate("service ${name} not found", { name = serviceName })
 	end
 
-	local modulesToManage = moduleName == "all" and service.modules or { moduleName = service.modules[moduleName] }
+	local modulesToManage = moduleName == "all" and service.modules or { [moduleName] = service.modules[moduleName] }
 	local modulesToManageCount = #table.keys(modulesToManage)
 	if modulesToManageCount == 0 then
 		return false,
@@ -313,7 +314,7 @@ function services.stop(name, manual)
 		return false, string.interpolate("service ${name} not found", { name = serviceName })
 	end
 
-	local modulesToStop = moduleName == "all" and service.modules or { moduleName = service.modules[moduleName] }
+	local modulesToStop = moduleName == "all" and service.modules or { [moduleName] = service.modules[moduleName] }
 	local modulesToManageCount = #table.keys(modulesToStop)
 	if modulesToManageCount == 0 then
 		return false,
@@ -348,7 +349,7 @@ function services.stop(name, manual)
 			local startTime = os.time()
 			while os.time() - startTime < timeout + 1 do
 				coroutine.yield()
-				local exit_code = module.process:wait(100, 1000) -- wait 100ms for process to exit
+				local exit_code = module.process:wait(1, 1000)
 				if exit_code >= 0 then
 					update_module_state_to_stopepd(module, exit_code, manual)
 					log_debug("${service}:${module} stopped", { service = serviceName, module = moduleName })
@@ -445,7 +446,6 @@ function services.status(name)
 	end
 
 	local result = {}
-	local collectedModules = {}
 	for moduleName, module in pairs(service.modules) do
 		local hasHealthcheck = type(module.definition.healthcheck) == "table"
 
@@ -456,14 +456,35 @@ function services.status(name)
 			stopped = module.stopped,
 			health = hasHealthcheck and module.state == "active" and module.health.state or nil
 		}
-		table.insert(collectedModules, moduleName)
 	end
 
 	return result
 end
 
 function services.logs(name)
-	-- // TODO: implement
+	log_debug("getting service ${name} log file", { name = name })
+
+	local serviceName, moduleName = name_to_service_module(name)
+	local service = managedServices[serviceName]
+	if not service then
+		return nil, string.interpolate("service ${name} not found", { name = serviceName })
+	end
+
+	local modulesToGetLogsFor = moduleName == "all" and service.modules or { [moduleName] = service.modules[moduleName] }
+	local modulesToGetLogsForCount = #table.keys(modulesToGetLogsFor)
+	if modulesToGetLogsForCount == 0 then
+		return nil,
+			string.interpolate("module ${module} not found in service ${service}",
+				{ module = moduleName, service = serviceName })
+	end
+
+	local logFiles = {}
+	for moduleName, module in pairs(modulesToGetLogsFor) do
+		if module.__output_file then
+			logFiles[moduleName] = module.__output_file:get_filename()
+		end
+	end
+	return serviceName, logFiles
 end
 
 function services.is_managed(name)
