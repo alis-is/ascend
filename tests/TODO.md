@@ -5,7 +5,7 @@ NOTES:
 
 
 TESTS:
-- [ ] Basics
+- [ ] Core
     - [ ] single module
         - [ ] automatic start
         - [ ] manual start

@@ -15,3 +15,4 @@ local client = require "asctl.client"
 GLOBAL_LOGGER.options.level = args.options["log-level"] or "info"
 
 client.execute(args.command, args.parameters)
+
