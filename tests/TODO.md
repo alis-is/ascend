@@ -3,6 +3,10 @@ NOTES:
 - tests should use eli scripts for portability
 - there should be common function to setup environment for test before its run 
 
+PREP:
+- [ ] test-env
+    - [ ] run - run ascend
+    - [ ] new - additional env, config etc. if needed
 
 TESTS:
 - [ ] Core
