@@ -1,0 +1,59 @@
+NOTES: 
+- tests have to be e2e - each test spawn its own instance of ascend/asctl and runs it independently, review logs
+- tests should use eli scripts for portability
+- there should be common function to setup environment for test before its run 
+
+
+TESTS:
+- [ ] Basics
+    - [ ] single module
+        - [ ] automatic start
+        - [ ] manual start
+        - [ ] delayed start
+        - [ ] stop
+        - [ ] stop signal
+        - [ ] stop timeout (kill)
+        - [ ] restart always
+        - [ ] restart never
+        - [ ] restart on-failure
+        - [ ] restart on-success
+        - [ ] restart delay
+        - [ ] restart max retries
+    - [ ] multi module
+        - [ ] automatic start
+        - [ ] manual start
+        - [ ] delayed start
+        - [ ] stop
+        - [ ] stop signal
+        - [ ] stop timeout (kill)
+        - [ ] restart always
+        - [ ] restart never
+        - [ ] restart on-failure
+        - [ ] restart on-success
+        - [ ] restart delay
+        - [ ] restart max retries
+        
+- [ ] isolation
+    - [ ] user
+    - [ ] working directory
+- [ ] Healthchecks
+    - [ ] interval
+    - [ ] timeout
+    - [ ] retries
+    - [ ] delay
+    - [ ] action - none
+    - [ ] action -restart
+- [ ] Logs
+    - [ ] rotate
+    - [ ] simple file
+    - [ ] max size
+    - [ ] max files
+- [ ] asctl commands
+    - [ ] list
+    - [ ] stop
+    - [ ] start
+    - [ ] restart
+    - [ ] reload
+    - [ ] ascend-health
+    - [ ] status
+    - [ ] logs
