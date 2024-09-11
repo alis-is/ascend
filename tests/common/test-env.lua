@@ -8,18 +8,9 @@
 ---@field private path string
 ---@field private is_open boolean
 ---@field private options AscendTestEnvOptions
----@field run fun(self: AscendTestEnv, test: fun(): boolean, string?): boolean, string?
-
-local function random_string(length)
-    local charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    local result = ""
-    for i = 1, length do
-        local randIndex = math.random(1, #charset)
-        result = result .. charset:sub(randIndex, randIndex)
-    end
-    return result
-end
-
+---@field private error string?
+---@field run fun(self: AscendTestEnv, test: fun(): boolean, string?): AscendTestEnv
+---@field result fun(self: AscendTestEnv): boolean, string?
 
 local AscendTestEnv = {}
 AscendTestEnv.__index = AscendTestEnv
@@ -28,14 +19,15 @@ AscendTestEnv.__index = AscendTestEnv
 ---@return AscendTestEnv
 function AscendTestEnv:new(options)
     local obj = setmetatable({}, AscendTestEnv)
-    local testId = random_string(8)
+    local testId = util.random_string(8)
     obj.path = path.combine("tmp", testId)
     obj.is_open = true
     obj.options = options
 
     local ok = fs.safe_mkdirp(obj.path)
     if not ok then
-        error("Failed to create test directory")
+        obj.failed = "Failed to create test directory"
+        return obj
     end
 
     local serviceDir = path.combine(obj.path, "services")
@@ -46,7 +38,8 @@ function AscendTestEnv:new(options)
     for serviceName, serviceSource in pairs(options.services) do
         local content = fs.read_file(serviceSource)
         if not content then
-            error("Failed to read service source")
+            obj.failed = "Failed to read service source"
+            return obj
         end
         fs.write_file(path.combine(serviceDir, serviceName .. ".hjson"), string.interpolate(content, options.vars[serviceName]))
     end
@@ -57,6 +50,10 @@ end
 
 ---@param test fun(): boolean, string
 function AscendTestEnv:run(test)
+    if self.failed then
+        return false, self.failed
+    end
+
     if not self.is_open then
         return false, "Test environment is closed"
     end
@@ -65,7 +62,15 @@ function AscendTestEnv:run(test)
     --- ...
     local result = test()
     --- ascendProcess:kill()
-    return result
+    return self
+end
+
+function AscendTestEnv:result()
+    if self.failed then
+        return false, self.failed
+    end
+
+    return true
 end
 
 
