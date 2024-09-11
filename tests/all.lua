@@ -1,6 +1,6 @@
 TEST = require"u-test"
 
-DISABLE_CLEANUP = false --- disable to see the tmp directory
+DISABLE_CLEANUP = true --- disable to see the tmp directory
 
 require"core"
 

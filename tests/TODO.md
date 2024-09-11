@@ -61,3 +61,7 @@ TESTS:
     - [ ] ascend-health
     - [ ] status
     - [ ] logs
+- [ ] advanced
+    - [ ] init
+    - [ ] ami apps
+    - [ ] ami bootstrap

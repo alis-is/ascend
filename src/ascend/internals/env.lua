@@ -40,7 +40,7 @@ local aenv = util.merge_tables({
 ---@field restart_max_retries number?
 ---@field healthcheck AscendHealthCheckDefinition?
 ---@field user string?
----@field log_file string?
+---@field log_file string | "none" | nil
 ---@field log_rotate boolean
 ---@field log_max_size number
 ---@field log_max_files number
@@ -224,7 +224,7 @@ local function normalize_service_definition(name, definition)
 				user = normalized.user,
 				environment = normalized.environment,
 				healthcheck = normalized.healthcheck,
-				log_file = path.combine(name, "default.log"),
+				log_file = normalized.log_file or path.combine(name, "default.log"),
 				log_rotate = normalized.log_rotate,
 				log_max_size = normalized.log_max_size,
 				log_max_files = normalized.log_max_files

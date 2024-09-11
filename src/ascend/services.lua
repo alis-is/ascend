@@ -166,13 +166,14 @@ local function start_module(module, manualStart)
 		module.definition.user = nil
 	end
 
+	local output = module.definition.log_file == "none" and "inherit" or "pipe"
 	local ok, process = proc.safe_spawn(module.definition.executable, module.definition.args,
 		{
 			env = module.definition.environment,
 			wait = false,
 			stdio = {
 				stdin = "ignore",
-				output = "pipe",
+				output = output,
 			},
 			createProcessGroup = true,
 			username = module.definition.user
@@ -196,10 +197,12 @@ local function start_module(module, manualStart)
 		unhealthyCheckCount = 0,
 		isCheckInProgress = false
 	}
-	module.__output = process:get_stdout() -- stdout and stderr are combined because of `output = "pipe"`
-	module.__output:set_nonblocking(true)
-	module.__output_file = module.__output_file or log.create_log_file(module.definition)
-	module.__output_file:write(" -- service start --\n")
+	if module.definition.log_file ~= "none" then
+		module.__output = process:get_stdout() -- stdout and stderr are combined because of `output = "pipe"`
+		module.__output:set_nonblocking(true)
+		module.__output_file = module.__output_file or log.create_log_file(module.definition)
+		module.__output_file:write(" -- service start --\n")
+	end
 
 	return true
 end
@@ -289,7 +292,7 @@ end
 ---@param module AscendManagedServiceModule
 ---@param exit_code integer
 ---@param manual boolean?
-local function update_module_state_to_stopepd(module, exit_code,  manual)
+local function update_module_state_to_stopepd(module, exit_code, manual)
 	module.state = "stopped"
 	module.exit_code = exit_code
 	module.process = nil

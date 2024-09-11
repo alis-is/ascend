@@ -1,7 +1,17 @@
+local hjson = require "hjson"
+local enter_dir = require "common.working-dir"
+
+---@class AscendTestEnvServiceDefinition
+---@field sourcePath string?
+--- NOTE: you want to check ./src/ascend/internals/env.lua:22 for available options
+---@field definition table<string, any> ---// TODO: if we only have parial
+
 ---@class AscendTestEnvOptions
----@field services table<string, string>?
+---@field services table<string, AscendTestEnvServiceDefinition>?
 ---@field healthchecks table<string, string>?
 ---@field vars table<string, table<string,string>>?
+---@field assets table<string, string>?
+---@field init string?
 
 
 ---@class AscendTestEnv
@@ -9,8 +19,25 @@
 ---@field private is_open boolean
 ---@field private options AscendTestEnvOptions
 ---@field private error string?
----@field run fun(self: AscendTestEnv, test: fun(): boolean, string?): AscendTestEnv
+---@field private init string?
+---@field private logDir string?
+---@field run fun(self: AscendTestEnv, test: fun(env: AscendTestEnv, ascendOutput: EliReadableStream): boolean, string?): AscendTestEnv
 ---@field result fun(self: AscendTestEnv): boolean, string?
+---@field get_log_dir fun(self: AscendTestEnv): string
+
+---@param definition table<string, any>
+---@param envPath string
+local function patch_definition(definition, envPath)
+    for key, value in pairs(definition) do
+        if type(value) == "table" then
+            definition[key] = patch_definition(value, envPath)
+        end
+        if key == "working_dir" then
+            definition[key] = path.combine(envPath, value)
+        end
+    end
+    return definition
+end
 
 local AscendTestEnv = {}
 AscendTestEnv.__index = AscendTestEnv
@@ -21,58 +48,133 @@ function AscendTestEnv:new(options)
     local obj = setmetatable({}, AscendTestEnv)
     local testId = util.random_string(8)
     obj.path = path.combine("tmp", testId)
+    if obj.path and not path.isabs(obj.path) then
+        obj.path = path.combine(os.cwd(), obj.path)
+    end
+
     obj.is_open = true
     obj.options = options
+    obj.init = options.init
+    if obj.init and not path.isabs(obj.init) then
+        obj.init = path.combine(obj.path, obj.init)
+    end
 
     local ok = fs.safe_mkdirp(obj.path)
     if not ok then
-        obj.failed = "Failed to create test directory"
+        obj.error = "Failed to create test directory"
         return obj
     end
 
     local serviceDir = path.combine(obj.path, "services")
     fs.mkdirp(serviceDir)
-    fs.mkdirp(path.combine(obj.path, "logs"))
+    obj.logDir = path.combine(obj.path, "logs")
+    fs.mkdirp(obj.logDir)
     fs.mkdirp(path.combine(obj.path, "healthchecks"))
+    local assetsDir = path.combine(obj.path, "assets")
+    fs.mkdirp(assetsDir)
 
-    for serviceName, serviceSource in pairs(options.services) do
-        local content = fs.read_file(serviceSource)
-        if not content then
-            obj.failed = "Failed to read service source"
-            return obj
+    local vars = util.merge_tables(options.vars, { 
+        INTERPRETER = INTERPRETER,
+        ENV_DIR = obj.path
+    })
+
+    for serviceName, serviceDefinition in pairs(options.services) do
+        local base = {}
+        if serviceDefinition.sourcePath then
+            local content = fs.read_file(serviceDefinition.sourcePath)
+            if not content then
+                obj.error = "Failed to read service source"
+                return obj
+            end
+            local ok, decodedOrError = pcall(hjson.decode, content)
+            if not ok then
+                obj.error = decodedOrError ---@as string
+                return obj
+            end
+            base = decodedOrError
         end
-        fs.write_file(path.combine(serviceDir, serviceName .. ".hjson"), string.interpolate(content, options.vars[serviceName]))
+
+        local definition = util.merge_tables(base, serviceDefinition.definition,
+            { overwrite = true, arrayMergeStrategy = "prefer-t2" })
+        local encodedDefinition = hjson.encode(patch_definition(definition, obj.path))
+        encodedDefinition = string.interpolate(encodedDefinition, vars)
+        -- print(encodedDefinition)
+        fs.write_file(path.combine(serviceDir, serviceName .. ".hjson"), encodedDefinition)
+    end
+
+    for assetDestination, assetSourcePath in pairs(options.assets) do
+        assetDestination = path.combine(assetsDir, assetDestination)
+        local dir = path.dir(assetDestination)
+        fs.mkdirp(dir)
+        fs.copy(assetSourcePath, assetDestination)
     end
 
     --  TODO: finish ascend config, env etc.
     return obj
 end
 
----@param test fun(): boolean, string
+---@param test fun(env: AscendTestEnv,ascendOutputStream: EliReadableStream): boolean, string
 function AscendTestEnv:run(test)
-    if self.failed then
-        return false, self.failed
+    if self.error then
+        return false, self.error
     end
 
     if not self.is_open then
         return false, "Test environment is closed"
     end
-    -- TODO: run ascend
-    --- local ascendProcess, err = proc.spawn("eli", { "../src/ascend/lua", "--log-level=trace"}, {  })
-    --- ...
-    local result = test()
-    --- ascendProcess:kill()
+
+    local srcDir <close> = enter_dir("../src")
+    local ascendProcess, err = proc.spawn(INTERPRETER, { "ascend.lua", "--log-level=trace" }, {
+        stdio = {
+            output = "pipe",
+        },
+        env = {
+            HOME = self.path,
+            ASCEND_SERVICES = path.combine(self.path, "services"),
+            ASCEND_LOGS = path.combine(self.path, "logs"),
+            ASCEND_APPS = path.combine(self.path, "apps"),
+            ASCEND_HEALTHCHECKS = path.combine(self.path, "healthchecks"),
+            ASCEND_INIT = self.init and path.combine(self.path, "init.lua"),
+            ASCEND_SOCKET = path.combine(self.path, "ascend.sock"),
+            APPS_BOOTSTRAP = path.combine(self.path, "apps-bootstrap"),
+            PATH = os.getenv("PATH") or "",
+        },
+        -- wait = true,
+    })
+
+    if not ascendProcess then
+        self.error = err
+        return self
+    end
+
+    local readableStream = ascendProcess:get_stdout()
+    if not readableStream then
+        self.error = "Failed to get stdout"
+        return self
+    end
+
+    local ok, err = test(self, readableStream)
+
+    if not ok then
+        self.error = err
+    end
+
+    ascendProcess:kill()
+    ascendProcess:wait()
     return self
 end
 
+function AscendTestEnv:get_log_dir()
+    return self.logDir
+end
+
 function AscendTestEnv:result()
-    if self.failed then
-        return false, self.failed
+    if self.error then
+        return false, self.error
     end
 
     return true
 end
-
 
 -- Close method
 function AscendTestEnv:__close()
