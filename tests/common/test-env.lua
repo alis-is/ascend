@@ -4,7 +4,7 @@ local enter_dir = require "common.working-dir"
 ---@class AscendTestEnvServiceDefinition
 ---@field sourcePath string?
 --- NOTE: you want to check ./src/ascend/internals/env.lua:22 for available options
----@field definition table<string, any> ---// TODO: if we only have parial
+---@field definition table<string, any>? -- if we only have parial
 
 ---@class AscendTestEnvOptions
 ---@field services table<string, AscendTestEnvServiceDefinition>?
@@ -21,9 +21,11 @@ local enter_dir = require "common.working-dir"
 ---@field private error string?
 ---@field private init string?
 ---@field private logDir string?
+---@field private build_env fun(self: AscendTestEnv): table<string, string>
 ---@field run fun(self: AscendTestEnv, test: fun(env: AscendTestEnv, ascendOutput: EliReadableStream): boolean, string?): AscendTestEnv
 ---@field result fun(self: AscendTestEnv): boolean, string?
 ---@field get_log_dir fun(self: AscendTestEnv): string
+---@field asctl fun(self: AscendTestEnv, args: string[], timeout: number?): boolean, string
 
 ---@param definition table<string, any>
 ---@param envPath string
@@ -113,6 +115,20 @@ function AscendTestEnv:new(options)
     return obj
 end
 
+function AscendTestEnv:build_env(env)
+    return {
+        HOME = self.path,
+        ASCEND_SERVICES = path.combine(self.path, "services"),
+        ASCEND_LOGS = path.combine(self.path, "logs"),
+        ASCEND_APPS = path.combine(self.path, "apps"),
+        ASCEND_HEALTHCHECKS = path.combine(self.path, "healthchecks"),
+        ASCEND_INIT = self.init and path.combine(self.path, "init.lua"),
+        ASCEND_SOCKET = path.combine(self.path, "ascend.sock"),
+        APPS_BOOTSTRAP = path.combine(self.path, "apps-bootstrap"),
+        PATH = os.getenv("PATH") or "",
+    }
+end
+
 ---@param test fun(env: AscendTestEnv,ascendOutputStream: EliReadableStream): boolean, string
 function AscendTestEnv:run(test)
     if self.error then
@@ -128,17 +144,7 @@ function AscendTestEnv:run(test)
         stdio = {
             output = "pipe",
         },
-        env = {
-            HOME = self.path,
-            ASCEND_SERVICES = path.combine(self.path, "services"),
-            ASCEND_LOGS = path.combine(self.path, "logs"),
-            ASCEND_APPS = path.combine(self.path, "apps"),
-            ASCEND_HEALTHCHECKS = path.combine(self.path, "healthchecks"),
-            ASCEND_INIT = self.init and path.combine(self.path, "init.lua"),
-            ASCEND_SOCKET = path.combine(self.path, "ascend.sock"),
-            APPS_BOOTSTRAP = path.combine(self.path, "apps-bootstrap"),
-            PATH = os.getenv("PATH") or "",
-        },
+        env = self:build_env(),
         -- wait = true,
     })
 
@@ -166,6 +172,29 @@ end
 
 function AscendTestEnv:get_log_dir()
     return self.logDir
+end
+
+
+function AscendTestEnv:asctl(args, timeout)
+    local srcDir <close> = not fs.exists("asctl.lua") and enter_dir("src") or nil
+    args = util.merge_arrays({ "asctl.lua" }, args)
+    local asctlProcess, err = proc.spawn(INTERPRETER, args, {
+        stdio = {
+            output = "pipe",
+        },
+        env = self:build_env(),
+    })
+    if not asctlProcess then
+        return false, err
+    end
+
+    local output = asctlProcess:get_stdout()
+    if not output then
+        return false, "failed to get stdout"
+    end
+
+    local exitCode = asctlProcess:wait(timeout)
+    return exitCode == 0, output:read("a")
 end
 
 function AscendTestEnv:result()

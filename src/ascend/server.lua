@@ -205,10 +205,21 @@ local methodHandlers = {
 		end
 		respond({ success = true, data = result })
 	end,
-	list = function(_, respond)
+	list = function(request, respond)
+		local params = request.params or {}
+		local options = params.options
+		params.options = nil -- remove options from params
+		if #params > 1 and not check_params(request.params, check_is_array_of_strings, respond) then
+			return
+		end
+
+		if #params > 1 and not check_params(request.params, check_manages_just_managed_services, respond) then
+			return
+		end
+
 		respond({
 			success = true,
-			data = services.list()
+			data = services.list(params, options.extended)
 		})
 	end,
 }

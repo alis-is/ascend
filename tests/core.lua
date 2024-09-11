@@ -1,7 +1,7 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["core - signle module - automatic start"] = function()
+test["core - single module - automatic start"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {

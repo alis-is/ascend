@@ -11,7 +11,7 @@ PREP:
 TESTS:
 - [ ] Core
     - [ ] single module
-        - [ ] automatic start
+        - [x] automatic start
         - [ ] manual start
         - [ ] delayed start
         - [ ] stop
@@ -53,7 +53,8 @@ TESTS:
     - [ ] max size
     - [ ] max files
 - [ ] asctl commands
-    - [ ] list
+    - [x] list
+    - [ ] list detail
     - [ ] stop
     - [ ] start
     - [ ] restart

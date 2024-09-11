@@ -128,14 +128,28 @@ function services.reload()
 	return true
 end
 
+---@param services string[]?
+---@param extended boolean?
 ---@return table<string, string[]>
-function services.list()
+function services.list(services, extended)
 	local list = {}
 	for name, _ in pairs(managedServices) do
-		list[name] = {}
-		for moduleName, _ in pairs(managedServices[name].modules) do
-			table.insert(list[name], moduleName)
+		if services and #services > 0 and not table.includes(services, name) then
+			goto CONTINUE
 		end
+		list[name] = {}
+		for moduleName, module in pairs(managedServices[name].modules) do
+			if extended then
+				list[name][moduleName] = {
+					state = module.state,
+					health = module.health.state,
+					pid = module.process and module.process:get_pid(),
+				}
+			else
+				table.insert(list[name], moduleName)
+			end
+		end
+		::CONTINUE::
 	end
 	return list
 end
