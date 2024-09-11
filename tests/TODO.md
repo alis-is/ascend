@@ -54,7 +54,7 @@ TESTS:
     - [ ] max files
 - [ ] asctl commands
     - [x] list
-    - [ ] list detail
+    - [x] list --extended
     - [ ] stop
     - [ ] start
     - [ ] restart
