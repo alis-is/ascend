@@ -25,7 +25,7 @@ TESTS:
         - [ ] restart delay
         - [ ] restart max retries
     - [ ] multi module
-        - [ ] automatic start
+        - [x] automatic start
         - [ ] manual start
         - [ ] delayed start
         - [ ] stop
