@@ -12,6 +12,7 @@ TESTS:
 - [ ] Core
     - [ ] single module
         - [x] automatic start
+        - [x] automatic start (2 services)
         - [ ] manual start
         - [ ] delayed start
         - [x] stop

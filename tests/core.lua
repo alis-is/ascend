@@ -1,6 +1,9 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
+
+-- single module tests
+
 test["core - single module - automatic start"] = function()
     ---@type AscendTestEnvOptions
     local options = {
@@ -47,6 +50,85 @@ test["core - single module - automatic start"] = function()
         return true
     end):run(function()
         return true -- some other test if needed
+    end):result()
+    test.assert(result, err)
+end
+
+test["core - single module - automatic start (2 services)"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                sourcePath = "assets/services/simple-date.hjson",
+            },
+            ["one"] = {
+                sourcePath = "assets/services/simple-one-time.hjson",
+            },
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua",
+            ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
+        }
+    }
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        local dateStarted = false
+        local oneStarted = false
+
+        while true do -- wait for both services to be started
+            local line = ascendOutput:read("l")
+            if line and line:match("date started") then
+                dateStarted = true
+            end
+            if line and line:match("one started") then
+                oneStarted = true
+            end
+
+            if dateStarted and oneStarted then
+                break
+            end
+
+            if os.time() > startTime + 10 then
+                if not dateStarted then
+                    return false, "Date service did not start in time"
+                end
+                if not oneStarted then
+                    return false, "One-time service did not start in time"
+                end
+            end
+        end
+
+        -- check logs exists
+        local logDir = env:get_log_dir()
+        local dateLogFile = path.combine(logDir, "date/default.log")
+        local oneLogFile = path.combine(logDir, "date/default.log")
+
+        local dateLogFound = false
+        local oneLogFound = false
+        while true do
+            local dateLogContent = fs.read_file(dateLogFile)
+            local oneLogContent = fs.read_file(oneLogFile)
+            if dateLogContent and dateLogContent:match("date:") and dateLogContent:match("service start") then
+                dateLogFound = true
+            end
+            if oneLogContent and oneLogContent:match("date:") and oneLogContent:match("service start") then
+                oneLogFound = true
+            end
+
+            if dateLogFound and oneLogFound then
+                break
+            end
+
+            if os.time() > startTime + 10 then
+                if not dateLogFound then
+                    return false, "Date service did not write to log in time"
+                end
+                if not oneLogFound then
+                    return false, "One service did not write to log in time"
+                end
+            end
+        end
+        return true
     end):result()
     test.assert(result, err)
 end
@@ -106,7 +188,7 @@ end
 --                 sourcePath = "assets/services/simple-one-time.hjson",
 --                 definition = {
 --                     restart = "always",
---                     restart_delay = 3,
+--                     restart_delay = 5,
 --                 }
 --             },
 --         },
