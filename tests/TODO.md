@@ -18,7 +18,7 @@ TESTS:
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [ ] restart always
+        - [x] restart always
         - [ ] restart never
         - [ ] restart on-failure
         - [ ] restart on-success
@@ -28,7 +28,7 @@ TESTS:
         - [x] automatic start
         - [ ] manual start
         - [ ] delayed start
-        - [ ] stop
+        - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
         - [ ] restart always
