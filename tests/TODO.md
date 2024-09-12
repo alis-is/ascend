@@ -21,7 +21,7 @@ TESTS:
         - [x] restart always
         - [x] restart never
         - [x] restart on-failure
-        - [ ] restart on-success
+        - [x] restart on-success
         - [ ] restart delay
         - [ ] restart max retries
     - [ ] multi module

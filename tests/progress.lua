@@ -1,19 +1,19 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["core - single module - restart on-failure"] = function()
+test["core - single module - restart on-success"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
-            ["oneFail"] = {
-                sourcePath = "assets/services/simple-one-time-fail.hjson",
+            ["one"] = {
+                sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
-                    restart = "on-failure",
+                    restart = "on-success",
                 }
             },
         },
         assets = {
-            ["scripts/one-time-fail.lua"] = "assets/scripts/one-time-fail.lua",
+            ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
         }
     }
 
@@ -27,7 +27,7 @@ test["core - single module - restart on-failure"] = function()
 
         while true do -- wait for service started
             local line = ascendOutput:read("l")
-            if line and line:match("oneFail started") then
+            if line and line:match("one started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -37,7 +37,7 @@ test["core - single module - restart on-failure"] = function()
 
         while true do -- wait for service exists
             local line = ascendOutput:read("l")
-            if line and line:match("oneFail:default exited with code 1") then
+            if line and line:match("one:default exited with code 0") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -47,7 +47,7 @@ test["core - single module - restart on-failure"] = function()
 
         while true do -- wait for service to restart
             local line = ascendOutput:read("l")
-            if line and line:match("restarting oneFail") then
+            if line and line:match("restarting one") then
                 break
             end
             if os.time() > startTime + 10 then
