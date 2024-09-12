@@ -202,7 +202,6 @@ test["core - single module - restart always"] = function()
 
         while true do -- wait for service started
             local line = ascendOutput:read("l")
-            print(string.len(nil))
             if line and line:match("one started") then
                 break
             end
