@@ -40,7 +40,7 @@ TESTS:
 - [ ] isolation
     - [ ] user
     - [ ] working directory
-- [ ] Healthchecks
+- [ ] Health checks
     - [ ] interval
     - [ ] timeout
     - [ ] retries

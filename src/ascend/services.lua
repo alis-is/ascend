@@ -531,6 +531,8 @@ function services.manage(start)
 	return coroutine.create(function()
 		while not is_stop_requested() do
 			local time = os.time()
+			-- //TODO: remove this print
+			print(time)
 			for serviceName, service in pairs(managedServices) do
 				for moduleName, module in pairs(service.modules) do
 					log.collect_output(module)
