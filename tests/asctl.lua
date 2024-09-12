@@ -30,7 +30,6 @@ test["asctl - list"] = function()
         end
 
         local ok, outputOrError = env:asctl({ "list" })
-        print(outputOrError)
         if not ok then
             return false, outputOrError
         end
