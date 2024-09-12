@@ -19,7 +19,7 @@ TESTS:
         - [ ] stop signal
         - [ ] stop timeout (kill)
         - [x] restart always
-        - [ ] restart never
+        - [x] restart never
         - [ ] restart on-failure
         - [ ] restart on-success
         - [ ] restart delay
