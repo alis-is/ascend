@@ -188,7 +188,6 @@ test["core - single module - restart always"] = function()
                 sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart = "always",
-                    restart_delay = 2,
                 }
             },
         },
