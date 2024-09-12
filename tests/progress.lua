@@ -1,19 +1,19 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["core - single module - restart on-success"] = function()
+test["core - single module - restart on-failure"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
-            ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+            ["oneFail"] = {
+                sourcePath = "assets/services/simple-one-time-fail.hjson",
                 definition = {
-                    restart = "on-success",
+                    restart = "on-failure",
                 }
             },
         },
         assets = {
-            ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
+            ["scripts/one-time-fail.lua"] = "assets/scripts/one-time-fail.lua",
         }
     }
 
@@ -21,13 +21,13 @@ test["core - single module - restart on-success"] = function()
         local startTime = os.time()
 
 
-        while true do
-            print(ascendOutput:read("l"))
-        end
+        -- while true do
+        --     print(ascendOutput:read("l"))
+        -- end
 
         while true do -- wait for service started
             local line = ascendOutput:read("l")
-            if line and line:match("one started") then
+            if line and line:match("oneFail started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -37,7 +37,7 @@ test["core - single module - restart on-success"] = function()
 
         while true do -- wait for service exists
             local line = ascendOutput:read("l")
-            if line and line:match("one:default exited with code 0") then
+            if line and line:match("oneFail:default exited with code 1") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -47,7 +47,7 @@ test["core - single module - restart on-success"] = function()
 
         while true do -- wait for service to restart
             local line = ascendOutput:read("l")
-            if line and line:match("restarting one") then
+            if line and line:match("restarting oneFail") then
                 break
             end
             if os.time() > startTime + 10 then
