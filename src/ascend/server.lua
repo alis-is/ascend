@@ -62,9 +62,12 @@ local function check_manages_just_managed_services(params)
 end
 
 local function alter_params(params)
-	util.print_table(params, true)
 	local options = params.options
 	params.options = nil
+	for k, v in pairs(params) do
+		params[tonumber(k)] = v
+		params[k] = nil
+	end
 
 	return params, options
 end
@@ -72,7 +75,6 @@ end
 ---@type table<string, fun(request: JsonRpcRequest, respond: fun(response: any, err: JsonRpcError?))>
 local methodHandlers = {
 	stop = function(request, respond)
-		util.print_table(request, true)
 		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
