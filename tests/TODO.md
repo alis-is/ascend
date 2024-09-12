@@ -14,7 +14,7 @@ TESTS:
         - [x] automatic start
         - [ ] manual start
         - [ ] delayed start
-        - [ ] stop
+        - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
         - [ ] restart always
