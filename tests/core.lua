@@ -288,6 +288,55 @@ test["core - multi module - automatic start"] = function()
     end):result()
     test.assert(result, err)
 end
+
+test["core - multi module - stop"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["multi"] = {
+                sourcePath = "assets/services/multi-module.hjson",
+            },
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua",
+            ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do -- wait for service started
+            local line = ascendOutput:read("l")
+            if line and line:match("multi started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        -- stop the service
+        local ok, outputOrError = env:asctl({ "stop", "multi" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        while true do -- wait for service stopped
+            local line = ascendOutput:read("l")
+            if line and line:match("multi stopped") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not stop in time"
+            end
+        end
+
+        return true
+    end):result()
+    test.assert(result, err)
+end
+
 if not TEST then
     test.summary()
 end
