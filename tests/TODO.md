@@ -31,12 +31,12 @@ TESTS:
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [ ] restart always
-        - [ ] restart never
-        - [ ] restart on-failure
-        - [ ] restart on-success
-        - [ ] restart delay
-        - [ ] restart max retries
+        - [x] restart always
+        - [x] restart never
+        - [x] restart on-failure
+        - [x] restart on-success
+        - [x] restart delay
+        - [x] restart max retries
         
 - [ ] isolation
     - [ ] user

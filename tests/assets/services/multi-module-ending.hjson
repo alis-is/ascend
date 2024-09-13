@@ -1,0 +1,7 @@
+{
+   executable: ${INTERPRETER}
+   args: [
+      ${ENV_DIR}/assets/scripts/one-time.lua
+      ${ENV_DIR}/assets/scripts/one-time2.lua
+   ]
+}

@@ -408,7 +408,6 @@ test["core - single module - restart delay"] = function()
             ["one"] = {
                 sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
-                    restart = "on-success",
                     restart_delay = 3,
                 }
             },
@@ -465,7 +464,6 @@ test["core - single module - restart max retries"] = function()
             ["one"] = {
                 sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
-                    restart = "on-success",
                     restart_max_retries = 6, -- we check with 6 because default is 5
                 }
             },
