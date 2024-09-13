@@ -443,13 +443,12 @@ test["core - single module - restart delay"] = function()
         local stopTime = os.time()
         while true do -- wait for service to restart
             local line = ascendOutput:read("l")
-
-            if os.time() < stopTime + 3 then
-                return false, "Service did not respected the delay of 3 secs"
-            end
             if line and line:match("restarting one") then
                 break
             end
+        end
+        if os.time() < stopTime + 3 then
+            return false, "Service did not respected the delay of 3 secs"
         end
 
         return true

@@ -7,7 +7,7 @@ test["core - multi module - restart delay"] = function()
             ["multi"] = {
                 sourcePath = "assets/services/multi-module-ending.hjson",
                 definition = {
-                    restart_delay = 6,
+                    restart_delay = 3,
                 }
             },
         },
@@ -47,7 +47,7 @@ test["core - multi module - restart delay"] = function()
                 break
             end
         end
-        if os.time() < stopTime + 4 then
+        if os.time() < stopTime + 3 then
             return false, "Service did not respected the delay of 6 secs"
         end
         return true
