@@ -1,14 +1,13 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
-
-test["core - multi module - restart max retries"] = function()
+test["core - multi module - restart delay"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["multi"] = {
                 sourcePath = "assets/services/multi-module-ending.hjson",
                 definition = {
-                    restart_max_retries = 6, -- we check with 6 because default is 5
+                    restart_delay = 6,
                 }
             },
         },
@@ -21,10 +20,10 @@ test["core - multi module - restart max retries"] = function()
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
 
+
         -- while true do
         --     print(ascendOutput:read("l"))
         -- end
-
 
         while true do -- wait for service started
             local line = ascendOutput:read("l")
@@ -38,7 +37,7 @@ test["core - multi module - restart max retries"] = function()
 
         while true do -- wait for service exists
             local line = ascendOutput:read("l")
-            if line and line:match("multi:default exited with code 0") then
+            if line and line:match("multi:one exited with code 0") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -46,22 +45,15 @@ test["core - multi module - restart max retries"] = function()
             end
         end
 
-        local maxRetries = 0
+        local stopTime = os.time()
         while true do -- wait for service to restart
             local line = ascendOutput:read("l")
 
-
-            if line and line:match("restarting multi") then
-                maxRetries = maxRetries + 1
+            if os.time() < stopTime + 4 then
+                return false, "Service did not respected the delay of 6 secs"
             end
-            -- now maxRetries=tries - 1 // we have issue in the repo already
-            -- //TODO: fix test after that issue is fixed
-            if maxRetries == 5 then
+            if line and line:match("restarting multi:one") then
                 break
-            end
-
-            if os.time() > startTime + 20 then
-                return false, "Service did not restart in time"
             end
         end
 

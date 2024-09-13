@@ -1,7 +1,16 @@
 {
-   executable: ${INTERPRETER}
-   args: [
-      ${ENV_DIR}/assets/scripts/date.lua
-      ${ENV_DIR}/assets/scripts/one-time.lua
-   ]
+   modules: {
+      date: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/date.lua
+         ]
+      }
+      one: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/one-time.lua
+         ]
+      }
+   }
 }
