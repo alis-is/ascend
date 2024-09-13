@@ -1,5 +1,10 @@
 local is_stop_requested = require "ascend.signal"
 
+---@class TaskPoolOptions
+---@field stopOnEmpty boolean?
+---@field stopOnError boolean?
+---@field ignoreStop boolean?
+
 local taskQueue = {}
 
 local tasks = {}
@@ -11,23 +16,34 @@ function tasks.add(task)
 end
 
 --- run all tasks in the task queue
----@param finalize boolean?
-function tasks.run(finalize)
-	while finalize or not is_stop_requested() do
+---@param options TaskPoolOptions
+function tasks.run(options)
+	if not options then
+		options = {}
+	end
+
+	while options.ignoreStop or not is_stop_requested() do
+		local stop = false
+	
 		local newTaskQueue = {}
 		for _, task in ipairs(taskQueue) do
 			if coroutine.status(task) == "dead" then
 				goto continue
 			end
-			coroutine.resume(task)
+			local ok, err = coroutine.resume(task)
+			if not ok then
+				log_error("!!! task failed !!!", { error = err })
+				if options.stopOnError then
+					stop = true
+					break
+				end
+			end
 			table.insert(newTaskQueue, task)
 			::continue::
 		end
 
 		taskQueue = newTaskQueue
-		-- we want to exit only if we are finalizing and there are no more tasks
-		-- we may keep running with no tasks if we assume that there will be more tasks/services added
-		if finalize and #taskQueue == 0 then
+		if stop or (options.stopOnEmpty and #taskQueue == 0) then
 			break
 		end
 		os.sleep(100, 1000)

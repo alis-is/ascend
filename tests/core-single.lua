@@ -180,14 +180,14 @@ test["core - single module - stop"] = function()
     test.assert(result, err)
 end
 
-test["core - single module - restart always"] = function()
+test["core - single module - restart on-exit"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["one"] = {
                 sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
-                    restart = "always",
+                    restart = "on-exit",
                 }
             },
         },

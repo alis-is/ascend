@@ -97,14 +97,14 @@ test["core - multi module - stop"] = function()
     test.assert(result, err)
 end
 
-test["core - multi module - restart always"] = function()
+test["core - multi module - restart on-exit"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["multi"] = {
                 sourcePath = "assets/services/multi-module-ending.hjson",
                 definition = {
-                    restart = "always",
+                    restart = "on-exit",
                 }
             },
         },

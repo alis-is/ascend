@@ -10,6 +10,7 @@ local log = require "ascend.log"
 --- failed - service failed -> exit code is not 0
 --- stopped - service was stopped -> exit code was 0
 --- stopping - service is stopping
+--- to-be-started - service is waiting to be started - delayed start = later than boot but not counted into start count
 ---@alias AscendManagedServiceModuleStatusKind "active" | "inactive" | "failed" | "stopped" | "stopping" | "to-be-started"
 
 ---@class AscendManagedServiceModuleHealth
@@ -154,13 +155,21 @@ function services.list(services, extended)
 	return list
 end
 
+---@class StartOptions
+---@field manual boolean?
+---@field isBoot boolean?
+
 ---@param module AscendManagedServiceModule
----@param manualStart boolean?
+---@param options StartOptions?
 ---@return boolean
 ---@return string?
-local function start_module(module, manualStart)
+local function start_module(module, options)
 	if module.state == "active" then
 		return true
+	end
+
+	if type(options) ~= "table" then
+		options = {}
 	end
 
 	local needsDirChange = type(module.definition.working_directory) == "string"
@@ -169,7 +178,7 @@ local function start_module(module, manualStart)
 		os.chdir(module.definition.working_directory)
 	end
 
-	if not manualStart then
+	if not options.manual and not options.isBoot then
 		module.restartCount = module.restartCount + 1
 	else -- if manually started, reset restart count
 		module.restartCount = 0
@@ -221,10 +230,6 @@ local function start_module(module, manualStart)
 	return true
 end
 
----@class StartOptions
----@field manual boolean?
----@field isBoot boolean?
-
 ---@param name string
 ---@param options StartOptions?
 ---@return boolean, string?
@@ -270,7 +275,7 @@ function services.start(name, options)
 				executable = managedModule.definition.executable,
 				module = moduleName
 			})
-		local ok, err = start_module(managedModule, options.manual)
+		local ok, err = start_module(managedModule, options)
 		if not ok then
 			table.insert(failedModules, moduleName)
 			log_debug("failed to start ${name}:${module} (${executable}) from '${workingDirectory}' - ${error}",
@@ -547,7 +552,7 @@ function services.manage(start)
 						if module.toBeStartedAt < time then
 							log_debug("delayed start of ${service}:${module}",
 								{ service = serviceName, module = moduleName })
-							local ok, err = start_module(module)
+							local ok, err = start_module(module, { isBoot = true })
 							if not ok then
 								log_error("failed to start ${service}:${module} - ${error}",
 									{ service = serviceName, module = moduleName, error = err })
@@ -577,12 +582,12 @@ function services.manage(start)
 
 					local stoppedAt = module.stopped or 0
 					local timeToRestart = module.definition.restart_delay + stoppedAt < time
-					local restartsExhausted = module.definition.restart_max_retries > 0 and
-						module.restartCount >= module.definition.restart_max_retries
-
+					local restartsExhausted = module.definition.restart ~= "always" and
+						module.definition.restart_max_retries > 0 and
+						module.restartCount > module.definition.restart_max_retries
 					if not module.manuallyStopped and timeToRestart and not restartsExhausted then
 						local shouldStart = false
-						if module.definition.restart == "always" or
+						if module.definition.restart == "always" or module.definition.restart == "on-exit" or
 							(module.definition.restart == "on-success" and module.state == "stopped") or
 							(module.definition.restart == "on-failure" and module.state == "failed") then
 							shouldStart = true

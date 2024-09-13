@@ -129,7 +129,7 @@ function AscendTestEnv:build_env(env)
     }
 end
 
----@param test fun(env: AscendTestEnv,ascendOutputStream: EliReadableStream): boolean, string
+---@param test fun(env: AscendTestEnv, ascendOutputStream: EliReadableStream): boolean, string
 function AscendTestEnv:run(test)
     if self.error then
         return false, self.error

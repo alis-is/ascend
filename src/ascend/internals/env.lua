@@ -35,7 +35,7 @@ local aenv = util.merge_tables({
 ---@field depends string[]? -- //TODO: implement
 ---@field autostart boolean?
 ---@field start_delay number?
----@field restart "always" | "never" | "on-failure" | "on-success" | nil
+---@field restart "always" | "never" | "on-failure" | "on-success" | "on-exit" | nil
 ---@field restart_delay number?
 ---@field restart_max_retries number?
 ---@field healthcheck AscendHealthCheckDefinition?
@@ -89,7 +89,7 @@ local function validate_service_definition(definition)
 			return false, string.interpolate("module ${name} - restart must be a string", moduleInfo)
 		end
 
-		if not table.includes({ "always", "never", "on-failure", "on-success" }, v.restart) then
+		if not table.includes({ "always", "never", "on-failure", "on-success", "on-exit" }, v.restart) then
 			return false,
 				string.interpolate("module ${name} - restart must be one of: always, never, on-failure, on-success",
 					moduleInfo)

@@ -15,6 +15,7 @@ end
 
 --- run all jobs in the queue
 ---@param jobs thread[]
+---@return boolean
 function jobs.run_queue(jobs)
 	local _, isMainThread = coroutine.running()
 
@@ -23,7 +24,10 @@ function jobs.run_queue(jobs)
 		for _, job in ipairs(jobs) do
 			if coroutine.status(job) ~= "dead" then
 				table.insert(newJobs, job)
-				coroutine.resume(job)
+				local ok = coroutine.resume(job)
+				if not ok then
+					return false
+				end
 			end
 		end
 		jobs = newJobs
@@ -31,6 +35,7 @@ function jobs.run_queue(jobs)
 			coroutine.yield()
 		end
 	end
+	return true
 end
 
 ---Converts an array of values to an array of params

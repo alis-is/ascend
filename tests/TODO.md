@@ -18,12 +18,16 @@ TESTS:
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [x] restart always
+        - [ ] restart always
+            - [ ] make sure it does NOT respects restart counters
         - [x] restart never
+        - [x] restart on-exit
+            - [ ] make sure it respects restart counters
         - [x] restart on-failure
         - [x] restart on-success
         - [x] restart delay
         - [x] restart max retries
+        - [ ] default values
     - [ ] multi module
         - [x] automatic start
         - [ ] manual start
@@ -31,13 +35,17 @@ TESTS:
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [x] restart always
+        - [ ] restart always
+            - [ ] make sure it does NOT respects restart counters
         - [x] restart never
+        - [x] restart on-exit
+            - [ ] make sure it respects restart counters
         - [x] restart on-failure
         - [x] restart on-success
         - [x] restart delay
         - [x] restart max retries
-        
+        - [ ] default values
+        - [ ] global property propagation down to modules
 - [ ] isolation
     - [ ] user
     - [ ] working directory
