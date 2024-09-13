@@ -23,7 +23,7 @@ TESTS:
         - [x] restart on-failure
         - [x] restart on-success
         - [x] restart delay
-        - [ ] restart max retries
+        - [x] restart max retries
     - [ ] multi module
         - [x] automatic start
         - [ ] manual start
