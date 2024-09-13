@@ -1,7 +1,7 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["core - single module - restart on-success"] = function()
+test["core - single module - restart delay"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
@@ -9,6 +9,7 @@ test["core - single module - restart on-success"] = function()
                 sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart = "on-success",
+                    restart_delay = 3,
                 }
             },
         },
@@ -19,7 +20,6 @@ test["core - single module - restart on-success"] = function()
 
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
-
 
         -- while true do
         --     print(ascendOutput:read("l"))
@@ -45,13 +45,15 @@ test["core - single module - restart on-success"] = function()
             end
         end
 
+        local stopTime = os.time()
         while true do -- wait for service to restart
             local line = ascendOutput:read("l")
+
+            if os.time() < stopTime + 3 then
+                return false, "Service did not respected the delay of 3 secs"
+            end
             if line and line:match("restarting one") then
                 break
-            end
-            if os.time() > startTime + 10 then
-                return false, "Service did not restart in time"
             end
         end
 
