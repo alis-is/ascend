@@ -29,15 +29,13 @@ test["asctl - list"] = function()
             end
         end
 
-        local ok, outputOrError = env:asctl({"list", "--extended"})
+        local ok, outputOrError = env:asctl({ "list" })
         if not ok then
             return false, outputOrError
         end
 
         local output = outputOrError
         return output:match("date") and output:match("date2")
-    end):run(function()
-        return true -- some other test if needed
     end):result()
     test.assert(result, err)
 end
@@ -70,15 +68,13 @@ test["asctl - list --extended"] = function()
             end
         end
 
-        local ok, outputOrError = env:asctl({"list", "--extended"})
+        local ok, outputOrError = env:asctl({ "list", "--extended" })
         if not ok then
             return false, outputOrError
         end
 
         local output = outputOrError
         return output:match("date") and output:match("date2") and output:match("pid") and output:match("state")
-    end):run(function()
-        return true -- some other test if needed
     end):result()
     test.assert(result, err)
 end

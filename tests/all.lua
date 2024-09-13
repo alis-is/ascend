@@ -1,8 +1,9 @@
-TEST = require"u-test"
+TEST = require "u-test"
 
-DISABLE_CLEANUP = true --- disable to see the tmp directory
+DISABLE_CLEANUP = false --- disable to see the tmp directory
 
-require"core"
-require"asctl"
+require "core-single"
+require "core-multi"
+require "asctl"
 
 TEST.summary()

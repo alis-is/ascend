@@ -73,6 +73,9 @@ function log.create_log_file(module_definition)
 
     -- Function to write to the log file
     function log_file:write(message)
+        if type(message) ~= "string" then
+            return
+        end
         -- If max_file_count is 0, do not write to file
         if self.max_file_count == 0 then
             return

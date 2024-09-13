@@ -75,7 +75,7 @@ function AscendTestEnv:new(options)
     local assetsDir = path.combine(obj.path, "assets")
     fs.mkdirp(assetsDir)
 
-    local vars = util.merge_tables(options.vars, { 
+    local vars = util.merge_tables(options.vars, {
         INTERPRETER = INTERPRETER,
         ENV_DIR = obj.path
     })
@@ -162,7 +162,7 @@ function AscendTestEnv:run(test)
     local ok, err = test(self, readableStream)
 
     if not ok then
-        self.error = err
+        self.error = err or "test error"
     end
 
     ascendProcess:kill()
@@ -174,14 +174,11 @@ function AscendTestEnv:get_log_dir()
     return self.logDir
 end
 
-
 function AscendTestEnv:asctl(args, timeout)
     local srcDir <close> = not fs.exists("asctl.lua") and enter_dir("src") or nil
     args = util.merge_arrays({ "asctl.lua" }, args)
     local asctlProcess, err = proc.spawn(INTERPRETER, args, {
-        stdio = {
-            output = "pipe",
-        },
+        stdio = { output = "pipe" },
         env = self:build_env(),
     })
     if not asctlProcess then

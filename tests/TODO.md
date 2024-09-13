@@ -12,35 +12,36 @@ TESTS:
 - [ ] Core
     - [ ] single module
         - [x] automatic start
+        - [x] automatic start (2 services)
         - [ ] manual start
         - [ ] delayed start
-        - [ ] stop
+        - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [ ] restart always
-        - [ ] restart never
-        - [ ] restart on-failure
-        - [ ] restart on-success
-        - [ ] restart delay
-        - [ ] restart max retries
+        - [x] restart always
+        - [x] restart never
+        - [x] restart on-failure
+        - [x] restart on-success
+        - [x] restart delay
+        - [x] restart max retries
     - [ ] multi module
-        - [ ] automatic start
+        - [x] automatic start
         - [ ] manual start
         - [ ] delayed start
-        - [ ] stop
+        - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [ ] restart always
-        - [ ] restart never
-        - [ ] restart on-failure
-        - [ ] restart on-success
-        - [ ] restart delay
-        - [ ] restart max retries
+        - [x] restart always
+        - [x] restart never
+        - [x] restart on-failure
+        - [x] restart on-success
+        - [x] restart delay
+        - [x] restart max retries
         
 - [ ] isolation
     - [ ] user
     - [ ] working directory
-- [ ] Healthchecks
+- [ ] Health checks
     - [ ] interval
     - [ ] timeout
     - [ ] retries

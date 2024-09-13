@@ -17,4 +17,3 @@ GLOBAL_LOGGER.options.level = args.options["log-level"] or "info"
 args.parameters.options = args.options
 
 client.execute(args.command, args.parameters)
-

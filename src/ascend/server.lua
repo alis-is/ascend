@@ -61,9 +61,21 @@ local function check_manages_just_managed_services(params)
 	return true
 end
 
+local function alter_params(params)
+	local options = params.options
+	params.options = nil
+	for k, v in pairs(params) do
+		params[tonumber(k)] = v
+		params[k] = nil
+	end
+
+	return params, options
+end
+
 ---@type table<string, fun(request: JsonRpcRequest, respond: fun(response: any, err: JsonRpcError?))>
 local methodHandlers = {
 	stop = function(request, respond)
+		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -88,6 +100,7 @@ local methodHandlers = {
 		end))
 	end,
 	start = function(request, respond)
+		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -113,6 +126,7 @@ local methodHandlers = {
 		end))
 	end,
 	restart = function(request, respond)
+		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -138,6 +152,7 @@ local methodHandlers = {
 		end))
 	end,
 	reload = function(request, respond)
+		request.params = alter_params(request.params)
 		local ok, err = services.reload()
 		if not ok then
 			respond(nil, {
@@ -148,11 +163,12 @@ local methodHandlers = {
 		end
 		respond(true)
 	end,
-	["ascend-health"] = function (request, respond)
+	["ascend-health"] = function(request, respond)
 		local strict = table.includes(request.params, "strict")
 		respond({ success = true, data = services.get_ascend_health(strict) })
 	end,
 	status = function(request, respond)
+		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -186,6 +202,7 @@ local methodHandlers = {
 		end))
 	end,
 	logs = function(request, respond)
+		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -206,9 +223,8 @@ local methodHandlers = {
 		respond({ success = true, data = result })
 	end,
 	list = function(request, respond)
-		local params = request.params or {}
-		local options = params.options
-		params.options = nil -- remove options from params
+		local params, options = alter_params(request.params or {})
+
 		if #params > 1 and not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
