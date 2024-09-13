@@ -584,7 +584,7 @@ function services.manage(start)
 					local timeToRestart = module.definition.restart_delay + stoppedAt < time
 					local restartsExhausted = module.definition.restart ~= "always" and
 						module.definition.restart_max_retries > 0 and
-						module.restartCount > module.definition.restart_max_retries
+						module.restartCount >= module.definition.restart_max_retries
 					if not module.manuallyStopped and timeToRestart and not restartsExhausted then
 						local shouldStart = false
 						if module.definition.restart == "always" or module.definition.restart == "on-exit" or
