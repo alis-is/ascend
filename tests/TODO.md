@@ -64,7 +64,7 @@ TESTS:
 - [ ] asctl commands
     - [x] list
     - [x] list --extended
-    - [ ] stop
+    - [x] stop
     - [ ] start
     - [ ] restart
     - [ ] reload
