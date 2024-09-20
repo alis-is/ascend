@@ -19,7 +19,7 @@ test["core - multi module - restart on-exit"] = function()
         }
     }
 
-    local result, err = new_test_env(options):run(function(env, ascendOutput)
+    local result, err = new_test_env(options):run(function(_, ascendOutput)
         local startTime = os.time()
 
         while true do -- wait for service started
