@@ -13,7 +13,7 @@ TESTS:
     - [ ] single module
         - [x] automatic start
         - [x] automatic start (2 services)
-        - [ ] manual start
+        - [x] manual start
         - [ ] delayed start
         - [x] stop
         - [ ] stop signal
@@ -30,7 +30,7 @@ TESTS:
         - [ ] default values
     - [ ] multi module
         - [x] automatic start
-        - [ ] manual start
+        - [x] manual start
         - [ ] delayed start
         - [x] stop
         - [ ] stop signal
@@ -66,7 +66,7 @@ TESTS:
     - [x] list --extended
     - [x] stop
     - [x] start
-    - [ ] restart
+    - [x] restart
     - [ ] reload
     - [ ] ascend-health
     - [ ] status

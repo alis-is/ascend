@@ -1,50 +1,48 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["asctl - restart"] = function()
+test["core - multi module - manual start"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
-            ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+            ["multi"] = {
+                sourcePath = "assets/services/multi-module.hjson",
+                definition = {
+                    autostart = false,
+                }
             }
         },
         assets = {
-            ["scripts/date.lua"] = "assets/scripts/date.lua"
+            ["scripts/date.lua"] = "assets/scripts/date.lua",
+            ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
         }
     }
 
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
 
-        while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
-                break
+        while true do
+            local line = ascendOutput:read("l", 1, "s")
+            if line and line:match("multi started") then
+                return false, "Service started automatically"
             end
-            if os.time() > startTime + 10 then
-                return false, "Service did not start in time"
+            if os.time() > startTime + 5 then
+                break
             end
         end
 
-        -- stop the service
-        local ok, outputOrError = env:asctl({ "restart", "date" })
+        local ok, outputOrError = env:asctl({ "start", "multi" })
         if not ok then
             return false, outputOrError
         end
 
-        local steps = 0 -- at 2 steps we consider test completed (stop + start)
-        while true do   -- wait for service stopped
+        while true do -- wait for service started
             local line = ascendOutput:read("l")
-            if line and (line:match("date stopped") or line:match("date started")) then
-                steps = steps + 1
-            end
-            if steps == 2 then
+            if line and line:match("multi started") then
                 break
             end
-
             if os.time() > startTime + 10 then
-                return false, "Service did not stop in time"
+                return false, "Service did not start in time"
             end
         end
 
