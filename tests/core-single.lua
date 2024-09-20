@@ -503,9 +503,7 @@ test["core - single module - restart max retries"] = function()
             if line and line:match("restarting one") then
                 maxRetries = maxRetries + 1
             end
-            -- now maxRetries=tries - 1 // we have issue in the repo already
-            -- //TODO: fix test after that issue is fixed
-            if maxRetries == 5 then
+            if maxRetries == 6 then
                 break
             end
 
