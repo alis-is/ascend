@@ -22,7 +22,7 @@ TESTS:
             - [ ] make sure it does NOT respects restart counters
         - [x] restart never
         - [x] restart on-exit
-            - [ ] make sure it respects restart counters
+            - [x] make sure it respects restart counters
         - [x] restart on-failure
         - [x] restart on-success
         - [x] restart delay
@@ -39,7 +39,7 @@ TESTS:
             - [ ] make sure it does NOT respects restart counters
         - [x] restart never
         - [x] restart on-exit
-            - [ ] make sure it respects restart counters
+            - [x] make sure it respects restart counters
         - [x] restart on-failure
         - [x] restart on-success
         - [x] restart delay
