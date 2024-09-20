@@ -133,6 +133,55 @@ test["core - single module - automatic start (2 services)"] = function()
     test.assert(result, err)
 end
 
+test["core - single module - manual start"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                sourcePath = "assets/services/simple-date.hjson",
+                definition = {
+                    autostart = false,
+                }
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do
+            local line = ascendOutput:read("l", 1, "s")
+            if line and line:match("date started") then
+                return false, "Service started automatically"
+            end
+            if os.time() > startTime + 5 then
+                break
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "start", "date" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        while true do -- wait for service started
+            local line = ascendOutput:read("l")
+            if line and line:match("date started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        return true
+    end):result()
+    test.assert(result, err)
+end
+
 test["core - single module - stop"] = function()
     ---@type AscendTestEnvOptions
     local options = {
@@ -180,14 +229,15 @@ test["core - single module - stop"] = function()
     test.assert(result, err)
 end
 
-test["core - single module - restart on-exit"] = function()
+test["core - single module - restart always"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["one"] = {
                 sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
-                    restart = "on-exit",
+                    restart = "always",
+                    restart_max_retries = 1,
                 }
             },
         },
@@ -196,7 +246,7 @@ test["core - single module - restart on-exit"] = function()
         }
     }
 
-    local result, err = new_test_env(options):run(function(env, ascendOutput)
+    local result, err = new_test_env(options):run(function(_, ascendOutput)
         local startTime = os.time()
 
         while true do -- wait for service started
@@ -219,12 +269,19 @@ test["core - single module - restart on-exit"] = function()
             end
         end
 
+        local stopTime = os.time()
+        local retries = 0
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
-            if line and line:match("restarting one") then
+            local line = ascendOutput:read("l", 2, "s")
+            if line and line:match("restarting one:default") then
+                retries = retries + 1
+            end
+
+            if retries > 1 then
                 break
             end
-            if os.time() > startTime + 10 then
+
+            if os.time() > stopTime + 10 then
                 return false, "Service did not restart in time"
             end
         end
@@ -250,7 +307,64 @@ test["core - single module - restart never"] = function()
         }
     }
 
-    local result, err = new_test_env(options):run(function(env, ascendOutput)
+    local result, err = new_test_env(options):run(function(_, ascendOutput)
+        local startTime = os.time()
+
+        while true do -- wait for service started
+            local line = ascendOutput:read("l", 10, "s")
+            if line and line:match("one started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        while true do -- wait for service exists
+            local line = ascendOutput:read("l", 2, "s")
+            if line and line:match("one:default exited with code 0") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not stop in time"
+            end
+        end
+
+        local stopTime = os.time()
+        while true do
+            local line = ascendOutput:read("l", 2, "s")
+            if line and line:match("restarting one") then
+                return false, "Service did restart"
+            end
+
+            if os.time() > stopTime + 5 then
+                break
+            end
+        end
+
+        return true
+    end):result()
+    test.assert(result, err)
+end
+
+test["core - single module - restart on-exit"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["one"] = {
+                sourcePath = "assets/services/simple-one-time.hjson",
+                definition = {
+                    restart = "on-exit",
+                    restart_max_retries = 2,
+                }
+            },
+        },
+        assets = {
+            ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(_, ascendOutput)
         local startTime = os.time()
 
         while true do -- wait for service started
@@ -274,17 +388,24 @@ test["core - single module - restart never"] = function()
         end
 
         local stopTime = os.time()
-        while os.time() <= stopTime + 2 do
-            -- //TODO: add a timout parameter in read method of EliReadableStream to use it here
-            -- local line = ascendOutput:read("l")
-            -- if line then
-            --     print(line)
-            --     if line:match("restarting one") then
-            --         return false, "Service did restart"
-            --     end
-            -- else
-            --     break
-            -- end
+        local retries = 0
+        while true do -- wait for service to restart
+            local line = ascendOutput:read("l", 2, "s")
+            if line and line:match("restarting one:default") then
+                retries = retries + 1
+            end
+
+            if retries > 2 then
+                return false, "Service did not respect restart_max_retries. Restarted more times."
+            end
+
+            if os.time() > stopTime + 10 then
+                break
+            end
+        end
+
+        if retries < 2 then
+            return false, "Service did not respect restart_max_retries. Restarted less times."
         end
 
         return true
@@ -308,7 +429,7 @@ test["core - single module - restart on-failure"] = function()
         }
     }
 
-    local result, err = new_test_env(options):run(function(env, ascendOutput)
+    local result, err = new_test_env(options):run(function(_, ascendOutput)
         local startTime = os.time()
 
         while true do -- wait for service started
@@ -363,7 +484,7 @@ test["core - single module - restart on-success"] = function()
         }
     }
 
-    local result, err = new_test_env(options):run(function(env, ascendOutput)
+    local result, err = new_test_env(options):run(function(_, ascendOutput)
         local startTime = os.time()
 
         while true do -- wait for service started
@@ -417,7 +538,7 @@ test["core - single module - restart delay"] = function()
         }
     }
 
-    local result, err = new_test_env(options):run(function(env, ascendOutput)
+    local result, err = new_test_env(options):run(function(_, ascendOutput)
         local startTime = os.time()
 
         while true do -- wait for service started
@@ -443,13 +564,12 @@ test["core - single module - restart delay"] = function()
         local stopTime = os.time()
         while true do -- wait for service to restart
             local line = ascendOutput:read("l")
-
-            if os.time() < stopTime + 3 then
-                return false, "Service did not respected the delay of 3 secs"
-            end
             if line and line:match("restarting one") then
                 break
             end
+        end
+        if os.time() < stopTime + 3 then
+            return false, "Service did not respected the delay of 3 secs"
         end
 
         return true
@@ -464,6 +584,7 @@ test["core - single module - restart max retries"] = function()
             ["one"] = {
                 sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
+                    restart = "on-exit",
                     restart_max_retries = 6, -- we check with 6 because default is 5
                 }
             },
@@ -473,7 +594,7 @@ test["core - single module - restart max retries"] = function()
         }
     }
 
-    local result, err = new_test_env(options):run(function(env, ascendOutput)
+    local result, err = new_test_env(options):run(function(_, ascendOutput)
         local startTime = os.time()
 
         while true do -- wait for service started
@@ -504,9 +625,7 @@ test["core - single module - restart max retries"] = function()
             if line and line:match("restarting one") then
                 maxRetries = maxRetries + 1
             end
-            -- now maxRetries=tries - 1 // we have issue in the repo already
-            -- //TODO: fix test after that issue is fixed
-            if maxRetries == 5 then
+            if maxRetries == 6 then
                 break
             end
 

@@ -13,16 +13,16 @@ TESTS:
     - [ ] single module
         - [x] automatic start
         - [x] automatic start (2 services)
-        - [ ] manual start
+        - [x] manual start
         - [ ] delayed start
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [ ] restart always
-            - [ ] make sure it does NOT respects restart counters
+        - [x] restart always
+            - [x] make sure it does NOT respects restart counters
         - [x] restart never
         - [x] restart on-exit
-            - [ ] make sure it respects restart counters
+            - [x] make sure it respects restart counters
         - [x] restart on-failure
         - [x] restart on-success
         - [x] restart delay
@@ -30,16 +30,16 @@ TESTS:
         - [ ] default values
     - [ ] multi module
         - [x] automatic start
-        - [ ] manual start
+        - [x] manual start
         - [ ] delayed start
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [ ] restart always
-            - [ ] make sure it does NOT respects restart counters
+        - [x] restart always
+            - [x] make sure it does NOT respects restart counters
         - [x] restart never
         - [x] restart on-exit
-            - [ ] make sure it respects restart counters
+            - [x] make sure it respects restart counters
         - [x] restart on-failure
         - [x] restart on-success
         - [x] restart delay
@@ -64,12 +64,12 @@ TESTS:
 - [ ] asctl commands
     - [x] list
     - [x] list --extended
-    - [ ] stop
-    - [ ] start
-    - [ ] restart
+    - [x] stop
+    - [x] start
+    - [x] restart
     - [ ] reload
     - [ ] ascend-health
-    - [ ] status
+    - [x] status
     - [ ] logs
 - [ ] advanced
     - [ ] init
