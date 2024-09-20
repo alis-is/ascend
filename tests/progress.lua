@@ -1,21 +1,20 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["core - multi module - restart on-exit"] = function()
+test["core - single module - restart always"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
-            ["multi"] = {
-                sourcePath = "assets/services/multi-module-ending.hjson",
+            ["one"] = {
+                sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
-                    restart = "on-exit",
-                    restart_max_retries = 2,
+                    restart = "always",
+                    restart_max_retries = 1,
                 }
             },
         },
         assets = {
             ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
-            ["scripts/one-time2.lua"] = "assets/scripts/one-time2.lua",
         }
     }
 
@@ -24,7 +23,7 @@ test["core - multi module - restart on-exit"] = function()
 
         while true do -- wait for service started
             local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            if line and line:match("one started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -34,7 +33,7 @@ test["core - multi module - restart on-exit"] = function()
 
         while true do -- wait for service exists
             local line = ascendOutput:read("l")
-            if line and line:match("multi:one2 exited with code 0") then
+            if line and line:match("one:default exited with code 0") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -46,21 +45,17 @@ test["core - multi module - restart on-exit"] = function()
         local retries = 0
         while true do -- wait for service to restart
             local line = ascendOutput:read("l", 2, "s")
-            if line and line:match("restarting multi:one2") then
+            if line and line:match("restarting one:default") then
                 retries = retries + 1
             end
 
-            if retries > 2 then
-                return false, "Service did not respect restart_max_retries. Restarted more times."
+            if retries > 1 then
+                break
             end
 
             if os.time() > stopTime + 10 then
-                break
+                return false, "Service did not restart in time"
             end
-        end
-
-        if retries < 2 then
-            return false, "Service did not respect restart_max_retries. Restarted less times."
         end
 
         return true

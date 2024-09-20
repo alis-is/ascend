@@ -18,8 +18,8 @@ TESTS:
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [ ] restart always
-            - [ ] make sure it does NOT respects restart counters
+        - [x] restart always
+            - [x] make sure it does NOT respects restart counters
         - [x] restart never
         - [x] restart on-exit
             - [x] make sure it respects restart counters
@@ -35,8 +35,8 @@ TESTS:
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
-        - [ ] restart always
-            - [ ] make sure it does NOT respects restart counters
+        - [x] restart always
+            - [x] make sure it does NOT respects restart counters
         - [x] restart never
         - [x] restart on-exit
             - [x] make sure it respects restart counters
