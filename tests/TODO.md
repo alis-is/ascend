@@ -65,7 +65,7 @@ TESTS:
     - [x] list
     - [x] list --extended
     - [x] stop
-    - [ ] start
+    - [x] start
     - [ ] restart
     - [ ] reload
     - [ ] ascend-health
