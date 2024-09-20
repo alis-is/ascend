@@ -462,6 +462,7 @@ test["core - single module - restart max retries"] = function()
             ["one"] = {
                 sourcePath = "assets/services/simple-one-time.hjson",
                 definition = {
+                    restart = "on-exit",
                     restart_max_retries = 6, -- we check with 6 because default is 5
                 }
             },
