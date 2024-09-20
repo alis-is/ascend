@@ -133,7 +133,7 @@ function log.collect_output(module)
     if module.__output_file == nil then
         return nil
     end
-    module.__output_file:write(module.__output:read("a")) -- Write the output to the log file
+    module.__output_file:write(module.__output:read("a", 0)) -- Write the output to the log file
 end
 
 return log

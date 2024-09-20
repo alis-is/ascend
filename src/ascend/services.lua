@@ -222,7 +222,6 @@ local function start_module(module, options)
 	}
 	if module.definition.log_file ~= "none" then
 		module.__output = process:get_stdout() -- stdout and stderr are combined because of `output = "pipe"`
-		module.__output:set_nonblocking(true)
 		module.__output_file = module.__output_file or log.create_log_file(module.definition)
 		module.__output_file:write(" -- service start --\n")
 	end
