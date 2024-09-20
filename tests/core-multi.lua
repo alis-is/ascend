@@ -173,7 +173,7 @@ test["core - multi module - restart never"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2, "s")
             if line and line:match("multi started") then
                 break
             end
@@ -183,7 +183,7 @@ test["core - multi module - restart never"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2, "s")
             if line and line:match("multi:one exited with code 0") then
                 break
             end
@@ -193,17 +193,15 @@ test["core - multi module - restart never"] = function()
         end
 
         local stopTime = os.time()
-        while os.time() <= stopTime + 2 do
-            -- //TODO: add a timout parameter in read method of EliReadableStream to use it here
-            -- local line = ascendOutput:read("l")
-            -- if line then
-            --     print(line)
-            --     if line:match("restarting multi") then
-            --         return false, "Service did restart"
-            --     end
-            -- else
-            --     break
-            -- end
+        while true do
+            local line = ascendOutput:read("l", 2, "s")
+            if line and line:match("restarting multi") then
+                return false, "Service did restart"
+            end
+
+            if os.time() > stopTime + 5 then
+                break
+            end
         end
 
         return true

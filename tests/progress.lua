@@ -1,13 +1,14 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
-test["core - multi module - restart delay"] = function()
+
+test["core - multi module - restart never"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["multi"] = {
                 sourcePath = "assets/services/multi-module-ending.hjson",
                 definition = {
-                    restart_delay = 3,
+                    restart = "never",
                 }
             },
         },
@@ -21,7 +22,7 @@ test["core - multi module - restart delay"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2, "s")
             if line and line:match("multi started") then
                 break
             end
@@ -31,7 +32,7 @@ test["core - multi module - restart delay"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2, "s")
             if line and line:match("multi:one exited with code 0") then
                 break
             end
@@ -41,15 +42,17 @@ test["core - multi module - restart delay"] = function()
         end
 
         local stopTime = os.time()
-        while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
-            if line and line:match("restarting multi:one") then
+        while true do
+            local line = ascendOutput:read("l", 2, "s")
+            if line and line:match("restarting multi") then
+                return false, "Service did restart"
+            end
+
+            if os.time() > stopTime + 5 then
                 break
             end
         end
-        if os.time() < stopTime + 3 then
-            return false, "Service did not respected the delay of 6 secs"
-        end
+
         return true
     end):result()
     test.assert(result, err)

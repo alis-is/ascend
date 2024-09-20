@@ -234,6 +234,7 @@ test["core - single module - restart on-exit"] = function()
     test.assert(result, err)
 end
 
+
 test["core - single module - restart never"] = function()
     ---@type AscendTestEnvOptions
     local options = {
@@ -254,7 +255,7 @@ test["core - single module - restart never"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 10, "s")
             if line and line:match("one started") then
                 break
             end
@@ -264,7 +265,7 @@ test["core - single module - restart never"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2, "s")
             if line and line:match("one:default exited with code 0") then
                 break
             end
@@ -274,17 +275,15 @@ test["core - single module - restart never"] = function()
         end
 
         local stopTime = os.time()
-        while os.time() <= stopTime + 2 do
-            -- //TODO: add a timout parameter in read method of EliReadableStream to use it here
-            -- local line = ascendOutput:read("l")
-            -- if line then
-            --     print(line)
-            --     if line:match("restarting one") then
-            --         return false, "Service did restart"
-            --     end
-            -- else
-            --     break
-            -- end
+        while true do
+            local line = ascendOutput:read("l", 2, "s")
+            if line and line:match("restarting one") then
+                return false, "Service did restart"
+            end
+
+            if os.time() > stopTime + 5 then
+                break
+            end
         end
 
         return true
