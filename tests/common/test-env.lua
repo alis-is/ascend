@@ -85,12 +85,17 @@ local function update_env(obj, options)
     end
 
     for assetDestination, assetSourcePath in pairs(options.assets) do
+        local source_path = assetSourcePath or "."
+        if not path.isabs(source_path) then
+            source_path = path.combine(obj.tests_dir, assetSourcePath)
+        end
+
         assetDestination = path.combine(obj.assets_dir, assetDestination)
         local dir = path.dir(assetDestination)
         fs.mkdirp(dir)
-        local copySuccess = fs.safe_copy(assetSourcePath, assetDestination)
+        local copySuccess = fs.safe_copy(source_path, assetDestination)
         if not copySuccess then
-            return false, "Failed to copy asset: " .. assetSourcePath
+            return false, "Failed to copy asset: " .. source_path
         end
     end
 
