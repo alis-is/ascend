@@ -21,12 +21,12 @@ test["asctl - reload"] = function()
         local startTime = os.time()
 
         ---@type AscendTestEnvOptions
-        options = {
+        local newOptions = {
             services = {
                 ["one"] = {
                     source_path = "assets/services/simple-one-time.hjson",
                     definition = {
-                        restart = "never",
+                        restart = "always",
                     }
                 }
             },
@@ -45,20 +45,28 @@ test["asctl - reload"] = function()
             end
         end
 
-        local ok, err = env:update_env(options)
+        -- update the environment with new options
+        local ok, err = env:update_env(newOptions)
         if not ok then
-            return false, "Error on update environment"
+            return false, err
         end
 
         -- reload the service
         local ok, outputOrError = env:asctl({ "reload", "one" })
 
-        print(outputOrError)
-        while true do
-            print(ascendOutput:read("l", 3))
-        end
         if not ok then
             return false, outputOrError
+        end
+
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting one:default") then
+                break
+            end
+
+            if os.time() > startTime + 10 then
+                return false, "Service did not restart in time"
+            end
         end
 
         return true
