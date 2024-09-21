@@ -20,11 +20,17 @@ local enter_dir = require "common.working-dir"
 ---@field private options AscendTestEnvOptions
 ---@field private error string?
 ---@field private init string?
+---@field private vars table<string, table<string,string>>?
+---@field private serviceDir string?
 ---@field private logDir string?
+---@field private assetsDir string?
 ---@field private build_env fun(self: AscendTestEnv): table<string, string>
+---@field update_env fun(self: AscendTestEnv, options: AscendTestEnvOptions): boolean, string
 ---@field run fun(self: AscendTestEnv, test: fun(env: AscendTestEnv, ascendOutput: EliReadableStream): boolean, string?): AscendTestEnv
 ---@field result fun(self: AscendTestEnv): boolean, string?
+---@field get_service_dir fun(self: AscendTestEnv): string
 ---@field get_log_dir fun(self: AscendTestEnv): string
+---@field get_assets_dir fun(self: AscendTestEnv): string
 ---@field asctl fun(self: AscendTestEnv, args: string[], timeout: number?): boolean, string
 
 ---@param definition table<string, any>
@@ -41,8 +47,48 @@ local function patch_definition(definition, envPath)
     return definition
 end
 
+
+
 local AscendTestEnv = {}
 AscendTestEnv.__index = AscendTestEnv
+
+---@param options AscendTestEnvOptions
+function AscendTestEnv:update_env(options)
+    for serviceName, serviceDefinition in pairs(options.services) do
+        local base = {}
+        if serviceDefinition.sourcePath then
+            local content = fs.read_file(serviceDefinition.sourcePath)
+            if not content then
+                return false, "Failed to read service source for " .. serviceName
+            end
+            local ok, decodedOrError = pcall(hjson.decode, content)
+            if not ok then
+                return false, decodedOrError
+            end
+            base = decodedOrError
+        end
+
+        local definition = util.merge_tables(base, serviceDefinition.definition, {
+            overwrite = true,
+            arrayMergeStrategy = "prefer-t2",
+        })
+        local encodedDefinition = hjson.encode(patch_definition(definition, self.path))
+        encodedDefinition = string.interpolate(encodedDefinition, self.vars)
+        fs.write_file(path.combine(self.serviceDir, serviceName .. ".hjson"), encodedDefinition)
+    end
+
+    for assetDestination, assetSourcePath in pairs(options.assets) do
+        assetDestination = path.combine(self.assetsDir, assetDestination)
+        local dir = path.dir(assetDestination)
+        fs.mkdirp(dir)
+        local copySuccess = fs.copy(assetSourcePath, assetDestination)
+        if not copySuccess then
+            return false, "Failed to copy asset: " .. assetSourcePath
+        end
+    end
+
+    return true
+end
 
 ---@param options AscendTestEnvOptions
 ---@return AscendTestEnv
@@ -67,48 +113,23 @@ function AscendTestEnv:new(options)
         return obj
     end
 
-    local serviceDir = path.combine(obj.path, "services")
-    fs.mkdirp(serviceDir)
+    obj.serviceDir = path.combine(obj.path, "services")
+    fs.mkdirp(obj.serviceDir)
     obj.logDir = path.combine(obj.path, "logs")
     fs.mkdirp(obj.logDir)
     fs.mkdirp(path.combine(obj.path, "healthchecks"))
-    local assetsDir = path.combine(obj.path, "assets")
-    fs.mkdirp(assetsDir)
+    obj.assetsDir = path.combine(obj.path, "assets")
+    fs.mkdirp(obj.assetsDir)
 
-    local vars = util.merge_tables(options.vars, {
+    obj.vars = util.merge_tables(options.vars, {
         INTERPRETER = INTERPRETER,
         ENV_DIR = obj.path
     })
 
-    for serviceName, serviceDefinition in pairs(options.services) do
-        local base = {}
-        if serviceDefinition.sourcePath then
-            local content = fs.read_file(serviceDefinition.sourcePath)
-            if not content then
-                obj.error = "Failed to read service source"
-                return obj
-            end
-            local ok, decodedOrError = pcall(hjson.decode, content)
-            if not ok then
-                obj.error = decodedOrError ---@as string
-                return obj
-            end
-            base = decodedOrError
-        end
-
-        local definition = util.merge_tables(base, serviceDefinition.definition,
-            { overwrite = true, arrayMergeStrategy = "prefer-t2" })
-        local encodedDefinition = hjson.encode(patch_definition(definition, obj.path))
-        encodedDefinition = string.interpolate(encodedDefinition, vars)
-        -- print(encodedDefinition)
-        fs.write_file(path.combine(serviceDir, serviceName .. ".hjson"), encodedDefinition)
-    end
-
-    for assetDestination, assetSourcePath in pairs(options.assets) do
-        assetDestination = path.combine(assetsDir, assetDestination)
-        local dir = path.dir(assetDestination)
-        fs.mkdirp(dir)
-        fs.copy(assetSourcePath, assetDestination)
+    local ok, err = obj:update_env(options)
+    if not ok then
+        obj.error = err
+        return obj
     end
 
     --  TODO: finish ascend config, env etc.
@@ -170,8 +191,16 @@ function AscendTestEnv:run(test)
     return self
 end
 
+function AscendTestEnv:get_service_dir()
+    return self.serviceDir
+end
+
 function AscendTestEnv:get_log_dir()
     return self.logDir
+end
+
+function AscendTestEnv:get_assets_dir()
+    return self.assetsDir
 end
 
 function AscendTestEnv:asctl(args, timeout)
