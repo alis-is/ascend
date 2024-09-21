@@ -6,7 +6,7 @@ test["asctl - reload"] = function()
     local options = {
         services = {
             ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+                source_path = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart = "never",
                 }
@@ -24,7 +24,7 @@ test["asctl - reload"] = function()
         options = {
             services = {
                 ["one"] = {
-                    sourcePath = "assets/services/simple-one-time.hjson",
+                    source_path = "assets/services/simple-one-time.hjson",
                     definition = {
                         restart = "never",
                     }

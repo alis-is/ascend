@@ -6,10 +6,10 @@ test["asctl - list"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             },
             ["date2"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             }
         },
         assets = {
@@ -45,10 +45,10 @@ test["asctl - list --extended"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             },
             ["date2"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             }
         },
         assets = {
@@ -84,7 +84,7 @@ test["asctl - stop"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             }
         },
         assets = {
@@ -131,7 +131,7 @@ test["asctl - start"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
                 definition = {
                     autostart = false,
                 }
@@ -181,7 +181,7 @@ test["asctl - restart"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             }
         },
         assets = {
@@ -233,7 +233,7 @@ test["asctl - status"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             }
         },
         assets = {

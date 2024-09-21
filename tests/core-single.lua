@@ -9,7 +9,7 @@ test["core - single module - automatic start"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
                 definition = {
                     working_dir = "tmp", --- in case of this service it does not make a difference
                     restart = "always",
@@ -59,10 +59,10 @@ test["core - single module - automatic start (2 services)"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             },
             ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+                source_path = "assets/services/simple-one-time.hjson",
             },
         },
         assets = {
@@ -138,7 +138,7 @@ test["core - single module - manual start"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
                 definition = {
                     autostart = false,
                 }
@@ -187,7 +187,7 @@ test["core - single module - stop"] = function()
     local options = {
         services = {
             ["date"] = {
-                sourcePath = "assets/services/simple-date.hjson",
+                source_path = "assets/services/simple-date.hjson",
             }
         },
         assets = {
@@ -234,7 +234,7 @@ test["core - single module - restart always"] = function()
     local options = {
         services = {
             ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+                source_path = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart = "always",
                     restart_max_retries = 1,
@@ -296,7 +296,7 @@ test["core - single module - restart never"] = function()
     local options = {
         services = {
             ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+                source_path = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart = "never",
                 }
@@ -352,7 +352,7 @@ test["core - single module - restart on-exit"] = function()
     local options = {
         services = {
             ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+                source_path = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart = "on-exit",
                     restart_max_retries = 2,
@@ -418,7 +418,7 @@ test["core - single module - restart on-failure"] = function()
     local options = {
         services = {
             ["oneFail"] = {
-                sourcePath = "assets/services/simple-one-time-fail.hjson",
+                source_path = "assets/services/simple-one-time-fail.hjson",
                 definition = {
                     restart = "on-failure",
                 }
@@ -473,7 +473,7 @@ test["core - single module - restart on-success"] = function()
     local options = {
         services = {
             ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+                source_path = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart = "on-success",
                 }
@@ -527,7 +527,7 @@ test["core - single module - restart delay"] = function()
     local options = {
         services = {
             ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+                source_path = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart_delay = 3,
                 }
@@ -582,7 +582,7 @@ test["core - single module - restart max retries"] = function()
     local options = {
         services = {
             ["one"] = {
-                sourcePath = "assets/services/simple-one-time.hjson",
+                source_path = "assets/services/simple-one-time.hjson",
                 definition = {
                     restart = "on-exit",
                     restart_max_retries = 6, -- we check with 6 because default is 5

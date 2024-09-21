@@ -9,7 +9,7 @@ test["core - multi module - automatic start"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module.hjson",
+                source_path = "assets/services/multi-module.hjson",
             },
         },
         assets = {
@@ -54,7 +54,7 @@ test["core - multi module - manual start"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module.hjson",
+                source_path = "assets/services/multi-module.hjson",
                 definition = {
                     autostart = false,
                 }
@@ -105,7 +105,7 @@ test["core - multi module - stop"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module.hjson",
+                source_path = "assets/services/multi-module.hjson",
             },
         },
         assets = {
@@ -153,7 +153,7 @@ test["core - multi module - restart always"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module-ending.hjson",
+                source_path = "assets/services/multi-module-ending.hjson",
                 definition = {
                     restart = "always",
                     restart_max_retries = 1,
@@ -216,7 +216,7 @@ test["core - multi module - restart never"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module-ending.hjson",
+                source_path = "assets/services/multi-module-ending.hjson",
                 definition = {
                     restart = "never",
                 }
@@ -273,7 +273,7 @@ test["core - multi module - restart on-exit"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module-ending.hjson",
+                source_path = "assets/services/multi-module-ending.hjson",
                 definition = {
                     restart = "on-exit",
                     restart_max_retries = 2,
@@ -340,7 +340,7 @@ test["core - multi module - restart on-failure"] = function()
     local options = {
         services = {
             ["multiFail"] = {
-                sourcePath = "assets/services/multi-module-ending-fail.hjson",
+                source_path = "assets/services/multi-module-ending-fail.hjson",
                 definition = {
                     restart = "on-failure",
                 }
@@ -395,7 +395,7 @@ test["core - multi module - restart on-success"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module-ending.hjson",
+                source_path = "assets/services/multi-module-ending.hjson",
                 definition = {
                     restart = "on-success",
                 }
@@ -450,7 +450,7 @@ test["core - multi module - restart delay"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module-ending.hjson",
+                source_path = "assets/services/multi-module-ending.hjson",
                 definition = {
                     restart_delay = 3,
                 }
@@ -506,7 +506,7 @@ test["core - multi module - restart max retries"] = function()
     local options = {
         services = {
             ["multi"] = {
-                sourcePath = "assets/services/multi-module-ending.hjson",
+                source_path = "assets/services/multi-module-ending.hjson",
                 definition = {
                     restart = "on-exit",
                     restart_max_retries = 6, -- we check with 6 because default is 5

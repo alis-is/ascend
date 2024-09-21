@@ -2,7 +2,7 @@ local hjson = require "hjson"
 local enter_dir = require "common.working-dir"
 
 ---@class AscendTestEnvServiceDefinition
----@field sourcePath string?
+---@field source_path string?
 --- NOTE: you want to check ./src/ascend/internals/env.lua:22 for available options
 ---@field definition table<string, any>? -- if we only have parial
 
@@ -13,17 +13,23 @@ local enter_dir = require "common.working-dir"
 ---@field assets table<string, string>?
 ---@field init string?
 
+---@class AscendTestEnvBase
+---@field tests_dir string?
+---@field service_dir string?
+---@field assets_dir string?
+---@field path string
+---@field vars table<string, table<string,string>>?
 
----@class AscendTestEnv
+---@class AscendTestEnv: AscendTestEnvBase
 ---@field private path string
 ---@field private is_open boolean
 ---@field private options AscendTestEnvOptions
 ---@field private error string?
 ---@field private init string?
 ---@field private vars table<string, table<string,string>>?
----@field private serviceDir string?
 ---@field private logDir string?
----@field private assetsDir string?
+---@field private service_dir string?
+---@field private assets_dir string?
 ---@field private build_env fun(self: AscendTestEnv): table<string, string>
 ---@field update_env fun(self: AscendTestEnv, options: AscendTestEnvOptions): boolean, string
 ---@field run fun(self: AscendTestEnv, test: fun(env: AscendTestEnv, ascendOutput: EliReadableStream): boolean, string?): AscendTestEnv
@@ -47,17 +53,18 @@ local function patch_definition(definition, envPath)
     return definition
 end
 
-
-
-local AscendTestEnv = {}
-AscendTestEnv.__index = AscendTestEnv
-
+---@param obj AscendTestEnvBase
 ---@param options AscendTestEnvOptions
-function AscendTestEnv:update_env(options)
+---@returns boolean, string?
+local function update_env(obj, options)
     for serviceName, serviceDefinition in pairs(options.services) do
         local base = {}
-        if serviceDefinition.sourcePath then
-            local content = fs.read_file(serviceDefinition.sourcePath)
+        if serviceDefinition.source_path then
+            local source_path = serviceDefinition.source_path or "."
+            if not path.isabs(source_path) then
+                source_path = path.combine(obj.tests_dir, source_path)
+            end
+            local content = fs.read_file(source_path)
             if not content then
                 return false, "Failed to read service source for " .. serviceName
             end
@@ -72,16 +79,16 @@ function AscendTestEnv:update_env(options)
             overwrite = true,
             arrayMergeStrategy = "prefer-t2",
         })
-        local encodedDefinition = hjson.encode(patch_definition(definition, self.path))
-        encodedDefinition = string.interpolate(encodedDefinition, self.vars)
-        fs.write_file(path.combine(self.serviceDir, serviceName .. ".hjson"), encodedDefinition)
+        local encodedDefinition = hjson.encode(patch_definition(definition, obj.path))
+        encodedDefinition = string.interpolate(encodedDefinition, obj.vars)
+        fs.write_file(path.combine(obj.service_dir, serviceName .. ".hjson"), encodedDefinition)
     end
 
     for assetDestination, assetSourcePath in pairs(options.assets) do
-        assetDestination = path.combine(self.assetsDir, assetDestination)
+        assetDestination = path.combine(obj.assets_dir, assetDestination)
         local dir = path.dir(assetDestination)
         fs.mkdirp(dir)
-        local copySuccess = fs.copy(assetSourcePath, assetDestination)
+        local copySuccess = fs.safe_copy(assetSourcePath, assetDestination)
         if not copySuccess then
             return false, "Failed to copy asset: " .. assetSourcePath
         end
@@ -90,11 +97,15 @@ function AscendTestEnv:update_env(options)
     return true
 end
 
+local AscendTestEnv = {}
+AscendTestEnv.__index = AscendTestEnv
+
 ---@param options AscendTestEnvOptions
 ---@return AscendTestEnv
 function AscendTestEnv:new(options)
     local obj = setmetatable({}, AscendTestEnv)
     local testId = util.random_string(8)
+    obj.tests_dir = os.cwd()
     obj.path = path.combine("tmp", testId)
     if obj.path and not path.isabs(obj.path) then
         obj.path = path.combine(os.cwd(), obj.path)
@@ -113,26 +124,24 @@ function AscendTestEnv:new(options)
         return obj
     end
 
-    obj.serviceDir = path.combine(obj.path, "services")
-    fs.mkdirp(obj.serviceDir)
+    obj.service_dir = path.combine(obj.path, "services")
+    fs.mkdirp(obj.service_dir)
     obj.logDir = path.combine(obj.path, "logs")
     fs.mkdirp(obj.logDir)
     fs.mkdirp(path.combine(obj.path, "healthchecks"))
-    obj.assetsDir = path.combine(obj.path, "assets")
-    fs.mkdirp(obj.assetsDir)
+    obj.assets_dir = path.combine(obj.path, "assets")
+    fs.mkdirp(obj.assets_dir)
 
     obj.vars = util.merge_tables(options.vars, {
         INTERPRETER = INTERPRETER,
         ENV_DIR = obj.path
     })
 
-    local ok, err = obj:update_env(options)
+    local ok, err = update_env(obj, options)
     if not ok then
         obj.error = err
         return obj
     end
-
-    --  TODO: finish ascend config, env etc.
     return obj
 end
 
@@ -192,7 +201,7 @@ function AscendTestEnv:run(test)
 end
 
 function AscendTestEnv:get_service_dir()
-    return self.serviceDir
+    return self.service_dir
 end
 
 function AscendTestEnv:get_log_dir()
@@ -200,7 +209,11 @@ function AscendTestEnv:get_log_dir()
 end
 
 function AscendTestEnv:get_assets_dir()
-    return self.assetsDir
+    return self.assets_dir
+end
+
+function AscendTestEnv:update_env(options)
+    return update_env(self, options)
 end
 
 function AscendTestEnv:asctl(args, timeout)
