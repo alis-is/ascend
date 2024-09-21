@@ -108,7 +108,7 @@ function AscendTestEnv:new(options)
     obj.tests_dir = os.cwd()
     obj.path = path.combine("tmp", testId)
     if obj.path and not path.isabs(obj.path) then
-        obj.path = path.combine(os.cwd(), obj.path)
+        obj.path = path.combine(os.cwd() or ".", obj.path)
     end
 
     obj.is_open = true
@@ -176,7 +176,7 @@ function AscendTestEnv:run(test)
         },
         env = self:build_env(),
         -- wait = true,
-    })
+    }) --[[@as EliProcess]]
 
     if not ascendProcess then
         self.error = err
@@ -222,7 +222,7 @@ function AscendTestEnv:asctl(args, timeout)
     local asctlProcess, err = proc.spawn(INTERPRETER, args, {
         stdio = { output = "pipe" },
         env = self:build_env(),
-    })
+    }) --[[@as EliProcess]]
     if not asctlProcess then
         return false, err
     end
