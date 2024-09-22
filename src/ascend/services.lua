@@ -155,6 +155,31 @@ function services.list(services, extended)
 	return list
 end
 
+---@param names string[]
+---@return table<string, any>?, string?
+function services.show(names)
+	local result = {}
+	for _, name in ipairs(names) do
+		local serviceName, moduleName = name_to_service_module(name)
+		local service = managedServices[serviceName]
+		if not service then
+			return nil, string.interpolate("service ${name} not found", { name = serviceName })
+		end
+
+		local modules = service.modules
+		if moduleName ~= "all" then
+			modules = { [moduleName] = service.modules[moduleName] }
+		end
+
+		local modulesResult = {}
+		for moduleName, module in pairs(modules) do
+			modulesResult[moduleName] = module.definition
+		end
+		result[serviceName] = modulesResult
+	end
+	return result
+end
+
 ---@class StartOptions
 ---@field manual boolean?
 ---@field isBoot boolean?
