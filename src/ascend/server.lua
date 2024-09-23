@@ -238,6 +238,31 @@ local methodHandlers = {
 			data = services.list(params, options.extended)
 		})
 	end,
+	show = function(request, respond)
+		local params, options = alter_params(request.params or {})
+
+		if #params > 1 and not check_params(request.params, check_is_array_of_strings, respond) then
+			return
+		end
+
+		if #params > 1 and not check_params(request.params, check_manages_just_managed_services, respond) then
+			return
+		end
+
+		local result, err = services.show(params)
+		if not result then
+			respond(nil, {
+				code = jsonrpc.error_codes.INTERNAL_ERROR,
+				message = err or "unknown error"
+			})
+			return
+		end
+
+		respond({
+			success = true,
+			data = result
+		})
+	end,
 }
 
 function server.listen()
