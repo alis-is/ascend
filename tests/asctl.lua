@@ -264,6 +264,51 @@ test["asctl - status"] = function()
     test.assert(result, err)
 end
 
+test["asctl - show"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        while true do -- wait for service started
+            local line = ascendOutput:read("l")
+            if line and line:match("date started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "show", "date" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local hjson = require"hjson"
+        local output = outputOrError
+        local show_result = hjson.decode(output)
+        if type(show_result) ~= "table" then
+            return false, "failed to decode show result"
+        end
+
+        return type(show_result.date) == "table" and
+            type(show_result.date.default.executable) == "string" and show_result.date.default.executable:match("eli") and
+            type(show_result.date.default.args) == "table" and #show_result.date.default.args == 1 and show_result.date.default.args[1]:match("scripts/date.lua") and
+            type(show_result.date.default.autostart) == "boolean" and show_result.date.default.autostart == true and
+            type(show_result.date.default.restart) == "string" and show_result.date.default.restart == "on-exit"
+    end):result()
+    test.assert(result, err)
+end
 
 if not TEST then
     test.summary()
