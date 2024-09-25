@@ -238,6 +238,9 @@ function AscendTestEnv:asctl(args, timeout)
     end
 
     local exitCode = asctlProcess:wait(timeout)
+    if exitCode == -1 then
+       asctlProcess:kill()
+    end
     return exitCode == 0, output:read("a")
 end
 

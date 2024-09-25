@@ -70,7 +70,7 @@ TESTS:
     - [ ] reload
     - [ ] ascend-health
     - [x] status
-    - [ ] logs
+    - [x] logs
     - [x] show
 - [ ] advanced
     - [ ] init
