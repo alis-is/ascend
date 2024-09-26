@@ -22,14 +22,14 @@ local function open_log_file(id, path)
     return {
         read = function()
             if not stream then
-                stream, err = require"eli.extensions.io".open_fstream(path, "r")
+                stream, err = io.open_fstream(path, "r")
                 if not stream then
                     return string.interpolate("${id} | failed to open file: ${error}", { id = id, error = err })
                 end
             end
             local new_ino, err = get_file_ino(path)
             if not new_ino then
-                log_warn("failed to get ino for file: ${path}", { path = path })
+                log_warn("failed to get ino for file: ${path} (error: ${error})", { path = path, error = err })
             elseif ino and ino ~= new_ino then
                 -- read the rest of the file
                 local rest = stream:read("a")

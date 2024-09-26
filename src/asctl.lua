@@ -132,7 +132,11 @@ local commands = {
 			log_error(string.interpolate("invalid timeout: ${timeout}", { timeout = timeout_str }))
 			os.exit(1)
 		end
-		log.stream(log_sources, timeout)
+		if options.follow or options.f or options.timeout then
+			log.stream(log_sources, timeout)
+		else
+			log.stream(log_sources, 1)
+		end
 	end
 }
 
