@@ -352,8 +352,6 @@ end
 ---@param manual boolean?
 ---@return boolean, string?
 function services.stop(name, manual)
-	log_debug("stopping service ${name}", { name = name })
-
 	local serviceName, moduleName = name_to_service_module(name)
 	local service = managedServices[serviceName]
 	if not service then
@@ -370,13 +368,12 @@ function services.stop(name, manual)
 
 	local stopJobs = {}
 
-	---@type string[]
-	local failedModules = {}
 	for moduleName, module in pairs(modulesToStop) do
 		if module.state ~= "active" then
 			goto CONTINUE
 		end
 
+		log_debug("stopping ${name}:${module}", { name = name, module = moduleName })
 		module.state = "stopping"
 
 		table.insert(stopJobs, coroutine.create(function()
@@ -398,7 +395,7 @@ function services.stop(name, manual)
 				local exit_code = module.process:wait(1, 1000)
 				if exit_code >= 0 then
 					update_module_state_to_stopepd(module, exit_code, manual)
-					log_debug("${service}:${module} stopped", { service = serviceName, module = moduleName })
+					log_info("${service}:${module} stopped", { service = serviceName, module = moduleName })
 					return
 				end
 				coroutine.yield()
@@ -421,28 +418,14 @@ function services.stop(name, manual)
 			local exit_code = module.process:wait(10, 1000)
 			if exit_code >= 0 then
 				update_module_state_to_stopepd(module, exit_code, manual)
-				log_debug("${service}:${module} killed", { service = serviceName, module = moduleName })
+				log_info("${service}:${module} stopped (killed)", { service = serviceName, module = moduleName })
 				return
 			end
-
-			table.insert(failedModules, moduleName)
 		end))
 		::CONTINUE::
 	end
 
 	jobs.run_queue(stopJobs)
-
-	if #failedModules > 0 then
-		log_debug("failed to stop ${count} of ${total} modules of ${name}",
-			{ count = #failedModules, total = modulesToManageCount, name = serviceName })
-		local resultMessage = #failedModules == 0 and "failed to stop service ${name}" or
-			"failed to stop service ${name}:${modules}"
-		return false,
-			string.interpolate(resultMessage,
-				{ name = serviceName, modules = string.join(",", table.unpack(failedModules)) })
-	end
-	log_info("${name} stopped", { name = name })
-
 	return true
 end
 
