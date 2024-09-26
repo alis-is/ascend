@@ -71,6 +71,7 @@ TESTS:
     - [ ] ascend-health
     - [x] status
     - [x] logs
+    - [x] logs -f
     - [x] show
 - [ ] advanced
     - [ ] init

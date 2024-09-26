@@ -356,6 +356,42 @@ test["asctl - logs"] = function()
     test.assert(result, err)
 end
 
+test["asctl - logs -f"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        while true do -- wait for service started
+            local line = ascendOutput:read("l")
+            if line and line:match("date started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        local ok, error = env:asctl({ "logs", "date", "-f" }, 10)
+        local timed_out = not ok and error:match("timeout")
+        if not timed_out then
+            return false, "should time out"
+        end
+
+        return true
+    end):result()
+    test.assert(result, err)
+end
+
 if not TEST then
     test.summary()
 end
