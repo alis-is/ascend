@@ -9,6 +9,7 @@ local counter = 0
 
 ---@param cmd string
 ---@param parameters any
+---@returns any?, string?
 function client.execute(cmd, parameters)
 	local ok, socket = ipc.safe_connect(aenv.ipcEndpoint)
 	if not ok then
@@ -16,14 +17,12 @@ function client.execute(cmd, parameters)
 			log_warn("unable to connect to the server, it may be already stopped")
 			os.exit(0)
 		end
-		log_error("failed to connect to the server: ${error}", { error = socket })
-		return
+		return nil, string.interpolate("failed to connect to the server: ${error}", { error = socket })
 	end
 	counter = counter + 1
 	local request, err = jsonrpc.encode_request(tostring(counter), cmd, parameters)
 	if err then
-		log_error("failed to encode request: ${error}", { error = err })
-		return
+		return nil, string.interpolate("failed to encode request: ${error}", { error = err })
 	end
 
 	local length = encoding.encode_int(#request, 4)
@@ -36,49 +35,46 @@ function client.execute(cmd, parameters)
 	while time + timeout > os.time() do
 		local response, err = socket:read({ timeout = timeout })
 		if not response then
-			log_error("failed to read response: ${error}", { error = err })
-			return
+			return nil, string.interpolate("failed to read response: ${error}", { error = err })
 		end
 		local decoded = encoding.decode_int(response:sub(1, 4))
 		local response = response:sub(5)
 		if #response < decoded then
 			local restOfResponse = socket:read({ timeout = timeout, buffer_size = decoded - #response })
 			if not restOfResponse then
-				log_error("failed to read response: ${error}", { error = err })
-				return
+				return nil, string.interpolate("failed to read response: ${error}", { error = err })
 			end
 			response = response .. restOfResponse
 		end
 
 		local response, err = jsonrpc.parse_response(response)
 		if not response or err then
-			log_error("failed to parse response: ${error}", { error = err or "unknown" })
-			return
+			return nil, string.interpolate("failed to parse response: ${error}", { error = err or "unknown" })
 		end
 		if response.id == tostring(counter) then
 			if response.error then
-				log_error("failed to execute command: ${error}", { error = response.error.message })
-				os.exit(EXIT_JSONRPC_ERROR)
-			end
-			local result = response.result
-			if type(result) == "boolean" then
-				os.exit(result and 0 or EXIT_COMMAND_ERROR)
+				return nil, string.interpolate("failed to execute command: ${error}", { error = response.error.message })
 			end
 
-			if type(aformat[cmd]) == "function" then
-				aformat[cmd](result.data)
-			else
-				aformat.default(result.data)
-			end
+			return response.result
+			-- if type(result) == "boolean" then
+			-- 	os.exit(result and 0 or EXIT_COMMAND_ERROR)
+			-- end
 
-			os.exit(result.success and 0 or EXIT_COMMAND_ERROR)
+			-- if type(aformat[cmd]) == "function" then
+			-- 	aformat[cmd](result.data)
+			-- else
+			-- 	aformat.default(result.data)
+			-- end
+
+			-- os.exit(result.success and 0 or EXIT_COMMAND_ERROR)
 		else
 			goto CONTINUE
 		end
 		::CONTINUE::
 	end
 
-	log_error("timeout")
+	return nil, "timeout"
 end
 
 return client

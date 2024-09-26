@@ -2,6 +2,8 @@
 
 require "common.globals"
 require "common.log" ("asctl")
+local format = require "asctl.format"
+local log = require "asctl.log"
 
 local args = require "common.args"
 
@@ -14,6 +16,134 @@ local client = require "asctl.client"
 
 GLOBAL_LOGGER.options.level = args.options["log-level"] or "info"
 
-args.parameters.options = args.options
+local commands = {
+	start = function (parameters, _)
+		local response, err = client.execute("start", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		local stop_jobs = response.data
+		for name, result in pairs(stop_jobs) do
+			if not result.ok then
+				log_error(string.interpolate("failed to start ${name}: ${error}", { name = name, error = result.error }))
+			else
+				log_info(string.interpolate("${name} started", { name = name }))
+			end
+		end
+	end,
+	stop = function (parameters, _)
+		local response, err = client.execute("stop", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		local stop_jobs = response.data
+		for name, result in pairs(stop_jobs) do
+			if not result.ok then
+				log_error(string.interpolate("failed to stop ${name}: ${error}", { name = name, error = result.error }))
+			else
+				log_info(string.interpolate("${name} stopped", { name = name }))
+			end
+		end
+	end,
+	restart = function (parameters, _)
+		local response, err = client.execute("restart", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		local stop_jobs = response.data
+		for name, result in pairs(stop_jobs) do
+			if not result.ok then
+				log_error(string.interpolate("failed to restart ${name}: ${error}", { name = name, error = result.error }))
+			else
+				log_info(string.interpolate("${name} restarted", { name = name }))
+			end
+		end
+	end,
+	reload = function (parameters, _)
+		local response, err = client.execute("restart", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		if not response.data then
+			log_error(string.interpolate("failed to reload: ${error}", { error = response.data.error }))
+		else
+			log_info("reloaded")
+		end
+	end,
+	["ascend-health"] = function (parameters, _)
+		local response, err = client.execute("ascend-health", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		if response.data ~= "healthy" then
+			log_error("not healthy")
+			os.exit(1)
+		else
+			log_info("healthy")
+		end
+	end,
+	list = function (parameters, options)
+		parameters.options = options
 
-client.execute(args.command, args.parameters)
+		local response, err = client.execute("list", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		print(format.list(response.data))
+	end,
+	status = function (parameters, _)
+		local response, err = client.execute("status", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		print(format.status(response.data))
+	end,
+	show = function (parameters, options)
+		local response, err = client.execute("show", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		print(format.show(response.data))
+	end,
+	logs = function (parameters, options)
+		local response, err = client.execute("logs", parameters)
+		if not response then
+			log_error(err)
+			os.exit(1)
+		end
+		local services = response.data
+		local log_sources = {}
+		for service, modules in pairs(services) do
+			for module, log_file_path in pairs(modules) do
+				log_sources[service .. ":" .. module] = log_file_path
+			end
+		end
+		local timeout_str = options.timeout
+		local timeout = tonumber(timeout_str)
+		if (timeout_str and (timeout == nil or timeout < 0)) then
+			log_error(string.interpolate("invalid timeout: ${timeout}", { timeout = timeout_str }))
+			os.exit(1)
+		end
+		if options.follow or options.f or options.timeout then
+			log.stream(log_sources, timeout)
+		else
+			log.stream(log_sources, 1)
+		end
+	end
+}
+
+if commands[args.command] then
+	commands[args.command](args.parameters, args.options)
+	return
+end
+
+log_error(string.interpolate("unknown command: ${command}", { command = args.command }))
+os.exit(1)

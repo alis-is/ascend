@@ -75,7 +75,6 @@ end
 ---@type table<string, fun(request: JsonRpcRequest, respond: fun(response: any, err: JsonRpcError?))>
 local methodHandlers = {
 	stop = function(request, respond)
-		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -100,7 +99,6 @@ local methodHandlers = {
 		end))
 	end,
 	start = function(request, respond)
-		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -126,7 +124,6 @@ local methodHandlers = {
 		end))
 	end,
 	restart = function(request, respond)
-		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -152,7 +149,6 @@ local methodHandlers = {
 		end))
 	end,
 	reload = function(request, respond)
-		request.params = alter_params(request.params)
 		local ok, err = services.reload()
 		if not ok then
 			respond(nil, {
@@ -168,7 +164,6 @@ local methodHandlers = {
 		respond({ success = true, data = services.get_ascend_health(strict) })
 	end,
 	status = function(request, respond)
-		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -202,7 +197,6 @@ local methodHandlers = {
 		end))
 	end,
 	logs = function(request, respond)
-		request.params = alter_params(request.params)
 		if not check_params(request.params, check_is_array_of_strings, respond) then
 			return
 		end
@@ -239,7 +233,7 @@ local methodHandlers = {
 		})
 	end,
 	show = function(request, respond)
-		local params, options = alter_params(request.params or {})
+		local params = request.params
 
 		if #params > 1 and not check_params(request.params, check_is_array_of_strings, respond) then
 			return

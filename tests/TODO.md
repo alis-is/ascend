@@ -70,7 +70,9 @@ TESTS:
     - [x] reload
     - [ ] ascend-health
     - [x] status
-    - [ ] logs
+    - [x] logs
+    - [x] logs -f
+    - [x] show
 - [ ] advanced
     - [ ] init
     - [ ] ami apps
