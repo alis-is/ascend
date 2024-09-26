@@ -135,6 +135,7 @@ function services.reload()
 	end
 
 	for _, name in ipairs(to_remove) do
+		services.stop(name)
 		managedServices[name] = nil
 	end
 
