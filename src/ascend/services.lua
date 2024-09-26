@@ -322,7 +322,7 @@ function services.start(name, options)
 					module = moduleName,
 					error = err
 				})
-			log_info("failed to start ${name}:${module}", { name = serviceName, module = moduleName })
+			log_warn("failed to start ${name}:${module}", { name = serviceName, module = moduleName })
 		else
 			log_info("${name}:${module} started", { name = serviceName, module = moduleName })
 		end
@@ -421,6 +421,8 @@ function services.stop(name, manual)
 				log_info("${service}:${module} stopped (killed)", { service = serviceName, module = moduleName })
 				return
 			end
+
+			log_warn("failed to stop ${service}:${module}", { service = serviceName, module = moduleName })
 		end))
 		::CONTINUE::
 	end
