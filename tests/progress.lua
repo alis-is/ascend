@@ -1,7 +1,7 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["asctl - ascend-healh"] = function()
+test["asctl - ascend-health"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
