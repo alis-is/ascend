@@ -561,7 +561,9 @@ function services.manage(start)
 			local time = os.time()
 			for serviceName, service in pairs(managedServices) do
 				for moduleName, module in pairs(service.modules) do
-					log.collect_output(module)
+					if module.state ~= "to-be-started" then -- the log dir may not be created yet
+						log.collect_output(module)
+					end
 
 					if table.includes({ "stopping" }, module.state) then -- skip if modules is being managed by state like "stopping"
 						goto CONTINUE
