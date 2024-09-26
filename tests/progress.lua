@@ -53,7 +53,6 @@ test["asctl - reload"] = function()
 
         -- reload the service
         local ok, outputOrError = env:asctl({ "reload", "one" })
-
         if not ok then
             return false, outputOrError
         end

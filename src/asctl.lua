@@ -63,13 +63,9 @@ local commands = {
 		end
 	end,
 	reload = function (parameters, _)
-		local response, err = client.execute("restart", parameters)
+		local response, err = client.execute("reload", parameters)
 		if not response then
-			log_error(err)
-			os.exit(1)
-		end
-		if not response.data then
-			log_error(string.interpolate("failed to reload: ${error}", { error = response.data.error }))
+			log_error(string.interpolate("failed to reload: ${error}", { error = err }))
 		else
 			log_info("reloaded")
 		end

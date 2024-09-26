@@ -126,6 +126,18 @@ function services.reload()
 			source = definition.source
 		}
 	end
+
+	local to_remove = {}
+	for name in pairs(managedServices) do
+		if not definitions[name] then
+			table.insert(to_remove, name)
+		end
+	end
+
+	for _, name in ipairs(to_remove) do
+		managedServices[name] = nil
+	end
+
 	return true
 end
 
@@ -276,9 +288,9 @@ function services.start(name, options)
 				{ module = moduleName, service = serviceName })
 	end
 
-	---@type string[]
-	local failedModules = {}
-	local startedModules = 0
+	-- ---@type string[]
+	-- local failedModules = {}
+	-- local startedModules = 0
 	for moduleName, managedModule in pairs(modulesToManage) do
 		if options.isBoot then
 			if not managedModule.definition.autostart then
@@ -301,7 +313,6 @@ function services.start(name, options)
 			})
 		local ok, err = start_module(managedModule, options)
 		if not ok then
-			table.insert(failedModules, moduleName)
 			log_debug("failed to start ${name}:${module} (${executable}) from '${workingDirectory}' - ${error}",
 				{
 					name = serviceName,
@@ -310,23 +321,11 @@ function services.start(name, options)
 					module = moduleName,
 					error = err
 				})
+			log_info("failed to start ${name}:${module}", { name = serviceName, module = moduleName })
 		else
-			startedModules = startedModules + 1
+			log_info("${name}:${module} started", { name = serviceName, module = moduleName })
 		end
 		::CONTINUE::
-	end
-
-	if #failedModules > 0 then
-		log_debug("failed to start ${count} of ${total} modules of ${name}",
-			{ count = #failedModules, total = modulesToManageCount, name = serviceName })
-		local resultMessage = #failedModules == 0 and "failed to start service ${name}" or
-			"failed to start service ${name}:${modules}"
-		return false,
-			string.interpolate(resultMessage,
-				{ name = serviceName, modules = string.join(",", table.unpack(failedModules)) })
-	end
-	if startedModules > 0 then
-		log_info("${name} started", { name = name })
 	end
 
 	return true
@@ -574,12 +573,13 @@ function services.manage(start)
 
 					if module.state == "to-be-started" then
 						if module.toBeStartedAt < time then
-							log_debug("delayed start of ${service}:${module}",
-								{ service = serviceName, module = moduleName })
 							local ok, err = start_module(module, { isBoot = true })
 							if not ok then
 								log_error("failed to start ${service}:${module} - ${error}",
 									{ service = serviceName, module = moduleName, error = err })
+							else
+								log_debug("${service}:${module} started (delayed)",
+									{ service = serviceName, module = moduleName })
 							end
 						end
 						goto CONTINUE
