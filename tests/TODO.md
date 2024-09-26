@@ -14,7 +14,7 @@ TESTS:
         - [x] automatic start
         - [x] automatic start (2 services)
         - [x] manual start
-        - [ ] delayed start
+        - [x] delayed start
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
@@ -31,7 +31,7 @@ TESTS:
     - [ ] multi module
         - [x] automatic start
         - [x] manual start
-        - [ ] delayed start
+        - [x] delayed start
         - [x] stop
         - [ ] stop signal
         - [ ] stop timeout (kill)
@@ -65,10 +65,11 @@ TESTS:
     - [x] list
     - [x] list --extended
     - [x] stop
+    - [x] stop only one module from multi module service
     - [x] start
     - [x] restart
     - [x] reload
-    - [ ] ascend-health
+    - [x] ascend-health
     - [x] status
     - [x] logs
     - [x] logs -f

@@ -20,8 +20,8 @@ test["asctl - list"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -59,8 +59,8 @@ test["asctl - list --extended"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -96,8 +96,8 @@ test["asctl - stop"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -112,8 +112,66 @@ test["asctl - stop"] = function()
         end
 
         while true do -- wait for service stopped
-            local line = ascendOutput:read("l")
-            if line and line:match("date stopped") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default stopped") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not stop in time"
+            end
+        end
+
+        return true
+    end):result()
+    test.assert(result, err)
+end
+
+test["asctl - stop only one module"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["multi"] = {
+                source_path = "assets/services/multi-module.hjson",
+            },
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua",
+            ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do -- wait for service started
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:date started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        -- stop the service
+        local ok, outputOrError = env:asctl({ "stop", "multi:one" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local stopTime = os.time()
+        local oneStopped = false
+        while true do -- wait for service stopped
+            local line = ascendOutput:read("l", 1)
+            if line and line:match("multi:date stopped") then
+                oneStopped = true
+            end
+
+            if line and line:match("multi:date stopped") then
+                return false, 'Wrong module stopped'
+            end
+
+            if os.time() > stopTime + 5 then
                 break
             end
             if os.time() > startTime + 10 then
@@ -146,8 +204,8 @@ test["asctl - start"] = function()
         local startTime = os.time()
 
         while true do
-            local line = ascendOutput:read("l", 1, "s")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 return false, "Service started automatically"
             end
             if os.time() > startTime + 5 then
@@ -162,8 +220,8 @@ test["asctl - start"] = function()
         end
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -193,8 +251,8 @@ test["asctl - restart"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -210,8 +268,8 @@ test["asctl - restart"] = function()
 
         local steps = 0 -- at 2 steps we consider test completed (stop + start)
         while true do
-            local line = ascendOutput:read("l")
-            if line and (line:match("date stopped") or line:match("date started")) then
+            local line = ascendOutput:read("l", 2)
+            if line and (line:match("date:default stopped") or line:match("date:default started")) then
                 steps = steps + 1
             end
             if steps == 2 then
@@ -263,8 +321,8 @@ test["asctl - reload"] = function()
         }
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("one started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("one:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -279,7 +337,7 @@ test["asctl - reload"] = function()
         end
 
         -- reload the service
-        local ok, outputOrError = env:asctl({ "reload", "one" })
+        local ok, outputOrError = env:asctl({ "reload" })
 
         if not ok then
             return false, outputOrError
@@ -301,6 +359,42 @@ test["asctl - reload"] = function()
     test.assert(result, err)
 end
 
+test["asctl - ascend-healh"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+            },
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do -- wait for service started
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "ascend-health" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local output = outputOrError
+        return output:match("healthy")
+    end):result()
+    test.assert(result, err)
+end
+
 test["asctl - status"] = function()
     ---@type AscendTestEnvOptions
     local options = {
@@ -317,8 +411,8 @@ test["asctl - status"] = function()
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -353,8 +447,8 @@ test["asctl - show"] = function()
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -367,7 +461,7 @@ test["asctl - show"] = function()
             return false, outputOrError
         end
 
-        local hjson = require"hjson"
+        local hjson = require "hjson"
         local output = outputOrError
         local show_result = hjson.decode(output)
         if type(show_result) ~= "table" then
@@ -376,7 +470,8 @@ test["asctl - show"] = function()
 
         return type(show_result.date) == "table" and
             type(show_result.date.default.executable) == "string" and show_result.date.default.executable:match("eli") and
-            type(show_result.date.default.args) == "table" and #show_result.date.default.args == 1 and show_result.date.default.args[1]:match("scripts/date.lua") and
+            type(show_result.date.default.args) == "table" and #show_result.date.default.args == 1 and
+            show_result.date.default.args[1]:match("scripts/date.lua") and
             type(show_result.date.default.autostart) == "boolean" and show_result.date.default.autostart == true and
             type(show_result.date.default.restart) == "string" and show_result.date.default.restart == "on-exit"
     end):result()
@@ -399,8 +494,8 @@ test["asctl - logs"] = function()
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -446,7 +541,7 @@ test["asctl - logs -f"] = function()
         local startTime = os.time()
         while true do -- wait for service started
             local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
