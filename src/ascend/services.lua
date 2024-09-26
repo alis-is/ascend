@@ -355,7 +355,7 @@ function services.stop(name, manual)
 	local serviceName, moduleName = name_to_service_module(name)
 	local service = managedServices[serviceName]
 	if not service then
-		return false, string.interpolate("service ${name} not found", { name = serviceName })
+		return false, string.interpolate("${name} not found", { name = serviceName })
 	end
 
 	local modulesToStop = moduleName == "all" and service.modules or { [moduleName] = service.modules[moduleName] }
@@ -373,7 +373,7 @@ function services.stop(name, manual)
 			goto CONTINUE
 		end
 
-		log_debug("stopping ${name}:${module}", { name = name, module = moduleName })
+		log_debug("stopping ${service}:${module}", { service = service, module = moduleName })
 		module.state = "stopping"
 
 		table.insert(stopJobs, coroutine.create(function()
