@@ -4,9 +4,9 @@ NOTES:
 - there should be common function to setup environment for test before its run 
 
 PREP:
-- [ ] test-env
-    - [ ] run - run ascend
-    - [ ] new - additional env, config etc. if needed
+- [x] test-env
+    - [x] run - run ascend
+    - [x] new - additional env, config etc. if needed
 
 TESTS:
 - [ ] Core
@@ -27,7 +27,7 @@ TESTS:
         - [x] restart on-success
         - [x] restart delay
         - [x] restart max retries
-        - [ ] default values
+        - [x] default values
     - [ ] multi module
         - [x] automatic start
         - [x] manual start
@@ -44,7 +44,7 @@ TESTS:
         - [x] restart on-success
         - [x] restart delay
         - [x] restart max retries
-        - [ ] default values
+        - [x] default values
         - [ ] global property propagation down to modules
 - [ ] isolation
     - [ ] user
@@ -55,13 +55,13 @@ TESTS:
     - [ ] retries
     - [ ] delay
     - [ ] action - none
-    - [ ] action -restart
+    - [ ] action - restart
 - [ ] Logs
     - [ ] rotate
     - [ ] simple file
     - [ ] max size
     - [ ] max files
-- [ ] asctl commands
+- [x] asctl commands
     - [x] list
     - [x] list --extended
     - [x] stop
