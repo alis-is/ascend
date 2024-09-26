@@ -373,7 +373,7 @@ function services.stop(name, manual)
 			goto CONTINUE
 		end
 
-		log_debug("stopping ${service}:${module}", { service = service, module = moduleName })
+		log_debug("stopping ${service}:${module}", { service = serviceName, module = moduleName })
 		module.state = "stopping"
 
 		table.insert(stopJobs, coroutine.create(function()
