@@ -1,0 +1,18 @@
+{
+   modules: {
+      date: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/date.lua
+         ]
+         start_delay: 1
+      }
+      one: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/one-time.lua
+         ]
+         start_delay: 3
+      }
+   }
+}
