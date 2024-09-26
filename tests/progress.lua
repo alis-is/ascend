@@ -1,26 +1,24 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["core - multi module - stop only one module"] = function()
+test["asctl - ascend-healh"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
-            ["multi"] = {
-                source_path = "assets/services/multi-module.hjson",
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
             },
         },
         assets = {
-            ["scripts/date.lua"] = "assets/scripts/date.lua",
-            ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
         }
     }
-
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
 
         while true do -- wait for service started
             local line = ascendOutput:read("l", 2)
-            if line and line:match("multi:date started") then
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -28,33 +26,13 @@ test["core - multi module - stop only one module"] = function()
             end
         end
 
-        -- stop the service
-        local ok, outputOrError = env:asctl({ "stop", "multi:one" })
+        local ok, outputOrError = env:asctl({ "ascend-health" })
         if not ok then
             return false, outputOrError
         end
 
-        local stopTime = os.time()
-        local oneStopped = false
-        while true do -- wait for service stopped
-            local line = ascendOutput:read("l", 1)
-            if line and line:match("multi:date stopped") then
-                oneStopped = true
-            end
-
-            if line and line:match("multi:date stopped") then
-                return false, 'Wrong module stopped'
-            end
-
-            if os.time() > stopTime + 5 then
-                break
-            end
-            if os.time() > startTime + 10 then
-                return false, "Service did not stop in time"
-            end
-        end
-
-        return true
+        local output = outputOrError
+        return output:match("healthy")
     end):result()
     test.assert(result, err)
 end
