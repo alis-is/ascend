@@ -21,8 +21,8 @@ test["core - multi module - automatic start"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:date started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -70,8 +70,8 @@ test["core - multi module - manual start"] = function()
         local startTime = os.time()
 
         while true do
-            local line = ascendOutput:read("l", 1, "s")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:date started") then
                 return false, "Service started automatically"
             end
             if os.time() > startTime + 5 then
@@ -85,8 +85,8 @@ test["core - multi module - manual start"] = function()
         end
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:date started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -120,7 +120,7 @@ test["core - multi module - delayed start"] = function()
 
         local services = 0
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("multi:one started %(delayed%)") then
                 services = services + 1
             end
@@ -171,8 +171,8 @@ test["core - multi module - stop"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:date started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -187,8 +187,8 @@ test["core - multi module - stop"] = function()
         end
 
         while true do -- wait for service stopped
-            local line = ascendOutput:read("l")
-            if line and line:match("multi stopped") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:date stopped") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -223,8 +223,8 @@ test["core - multi module - restart always"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -233,7 +233,7 @@ test["core - multi module - restart always"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("multi:one2 exited with code 0") then
                 break
             end
@@ -245,7 +245,7 @@ test["core - multi module - restart always"] = function()
         local stopTime = os.time()
         local retries = 0
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l", 2, "s")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("restarting multi:one2") then
                 retries = retries + 1
             end
@@ -285,8 +285,8 @@ test["core - multi module - restart never"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l", 2, "s")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -295,8 +295,8 @@ test["core - multi module - restart never"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l", 2, "s")
-            if line and line:match("multi:one exited with code 0") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 exited with code 0") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -306,8 +306,8 @@ test["core - multi module - restart never"] = function()
 
         local stopTime = os.time()
         while true do
-            local line = ascendOutput:read("l", 2, "s")
-            if line and line:match("restarting multi") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting multi:one2") then
                 return false, "Service did restart"
             end
 
@@ -343,8 +343,8 @@ test["core - multi module - restart on-exit"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -365,7 +365,7 @@ test["core - multi module - restart on-exit"] = function()
         local stopTime = os.time()
         local retries = 0
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l", 2, "s")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("restarting multi:one2") then
                 retries = retries + 1
             end
@@ -409,8 +409,8 @@ test["core - multi module - restart on-failure"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multiFail started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multiFail:oneFail started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -419,7 +419,7 @@ test["core - multi module - restart on-failure"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("multiFail:oneFail exited with code 1") then
                 break
             end
@@ -429,8 +429,8 @@ test["core - multi module - restart on-failure"] = function()
         end
 
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
-            if line and line:match("restarting multiFail") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting multiFail:oneFail") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -464,8 +464,8 @@ test["core - multi module - restart on-success"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -475,7 +475,7 @@ test["core - multi module - restart on-success"] = function()
 
         while true do -- wait for service exists
             local line = ascendOutput:read("l")
-            if line and line:match("multi:one exited with code 0") then
+            if line and line:match("multi:one2 exited with code 0") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -484,8 +484,8 @@ test["core - multi module - restart on-success"] = function()
         end
 
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
-            if line and line:match("restarting multi") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting multi:one2") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -519,8 +519,8 @@ test["core - multi module - restart delay"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -529,8 +529,8 @@ test["core - multi module - restart delay"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
-            if line and line:match("multi:one exited with code 0") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 exited with code 0") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -540,8 +540,8 @@ test["core - multi module - restart delay"] = function()
 
         local stopTime = os.time()
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
-            if line and line:match("restarting multi") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting multi:one2") then
                 break
             end
         end
@@ -577,8 +577,8 @@ test["core - multi module - restart max retries"] = function()
 
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -587,8 +587,8 @@ test["core - multi module - restart max retries"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
-            if line and line:match("multi:one exited with code 0") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:one2 exited with code 0") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -598,10 +598,10 @@ test["core - multi module - restart max retries"] = function()
 
         local maxRetries = 0
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
 
 
-            if line and line:match("restarting multi") then
+            if line and line:match("restarting multi:one2") then
                 maxRetries = maxRetries + 1
             end
             if maxRetries == 6 then

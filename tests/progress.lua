@@ -1,12 +1,12 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["core - multi module - delayed start"] = function()
+test["core - multi module - stop only one module"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["multi"] = {
-                source_path = "assets/services/multi-module-start-delay.hjson",
+                source_path = "assets/services/multi-module.hjson",
             },
         },
         assets = {
@@ -14,20 +14,13 @@ test["core - multi module - delayed start"] = function()
             ["scripts/one-time.lua"] = "assets/scripts/one-time.lua",
         }
     }
+
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
 
-        local services = 0
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("multi:one started %(delayed%)") then
-                services = services + 1
-            end
-            if line and line:match("multi:date started %(delayed%)") then
-                services = services + 1
-            end
-
-            if services == 2 then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:date started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -35,18 +28,32 @@ test["core - multi module - delayed start"] = function()
             end
         end
 
-        -- check log exists
-        local logDir = env:get_log_dir()
-        local logFile = path.combine(logDir, "multi/date.log")
-        while true do
-            local logContent = fs.read_file(logFile)
-            if logContent and logContent:match("date:") and logContent:match("service start") then
+        -- stop the service
+        local ok, outputOrError = env:asctl({ "stop", "multi:one" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local stopTime = os.time()
+        local oneStopped = false
+        while true do -- wait for service stopped
+            local line = ascendOutput:read("l", 1)
+            if line and line:match("multi:date stopped") then
+                oneStopped = true
+            end
+
+            if line and line:match("multi:date stopped") then
+                return false, 'Wrong module stopped'
+            end
+
+            if os.time() > stopTime + 5 then
                 break
             end
             if os.time() > startTime + 10 then
-                return false, "Service did not write to log in time"
+                return false, "Service did not stop in time"
             end
         end
+
         return true
     end):result()
     test.assert(result, err)

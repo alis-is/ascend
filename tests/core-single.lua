@@ -26,8 +26,8 @@ test["core - single module - automatic start"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -76,11 +76,11 @@ test["core - single module - automatic start (2 services)"] = function()
         local oneStarted = false
 
         while true do -- wait for both services to be started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 dateStarted = true
             end
-            if line and line:match("one started") then
+            if line and line:match("one:default started") then
                 oneStarted = true
             end
 
@@ -153,7 +153,7 @@ test["core - single module - manual start"] = function()
         local startTime = os.time()
 
         while true do
-            local line = ascendOutput:read("l", 1, "s")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("date started") then
                 return false, "Service started automatically"
             end
@@ -169,7 +169,7 @@ test["core - single module - manual start"] = function()
 
         while true do -- wait for service started
             local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -181,6 +181,54 @@ test["core - single module - manual start"] = function()
     end):result()
     test.assert(result, err)
 end
+
+test["core - single module - delayed start"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+                definition = {
+                    start_delay = 2,
+                }
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do -- wait for service started
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started %(delayed%)") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        -- check log exists
+        local logDir = env:get_log_dir()
+        local logFile = path.combine(logDir, "date/default.log")
+        while true do
+            local logContent = fs.read_file(logFile)
+            if logContent and logContent:match("date:") and logContent:match("service start") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not write to log in time"
+            end
+        end
+        return true
+    end):run(function()
+        return true -- some other test if needed
+    end):result()
+    test.assert(result, err)
+end
+
 
 test["core - single module - stop"] = function()
     ---@type AscendTestEnvOptions
@@ -199,8 +247,8 @@ test["core - single module - stop"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("date started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -215,8 +263,8 @@ test["core - single module - stop"] = function()
         end
 
         while true do -- wait for service stopped
-            local line = ascendOutput:read("l")
-            if line and line:match("date stopped") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default stopped") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -250,8 +298,8 @@ test["core - single module - restart always"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("one started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("one:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -311,8 +359,8 @@ test["core - single module - restart never"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l", 10, "s")
-            if line and line:match("one started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("one:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -321,7 +369,7 @@ test["core - single module - restart never"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l", 2, "s")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("one:default exited with code 0") then
                 break
             end
@@ -332,8 +380,8 @@ test["core - single module - restart never"] = function()
 
         local stopTime = os.time()
         while true do
-            local line = ascendOutput:read("l", 2, "s")
-            if line and line:match("restarting one") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting one:default") then
                 return false, "Service did restart"
             end
 
@@ -368,8 +416,8 @@ test["core - single module - restart on-exit"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("one started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("one:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -378,7 +426,7 @@ test["core - single module - restart on-exit"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("one:default exited with code 0") then
                 break
             end
@@ -390,7 +438,7 @@ test["core - single module - restart on-exit"] = function()
         local stopTime = os.time()
         local retries = 0
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l", 2, "s")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("restarting one:default") then
                 retries = retries + 1
             end
@@ -433,8 +481,8 @@ test["core - single module - restart on-failure"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("oneFail started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("oneFail:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -443,7 +491,7 @@ test["core - single module - restart on-failure"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("oneFail:default exited with code 1") then
                 break
             end
@@ -453,8 +501,8 @@ test["core - single module - restart on-failure"] = function()
         end
 
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
-            if line and line:match("restarting oneFail") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting oneFail:default") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -488,8 +536,8 @@ test["core - single module - restart on-success"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("one started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("one:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -498,7 +546,7 @@ test["core - single module - restart on-success"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("one:default exited with code 0") then
                 break
             end
@@ -508,8 +556,8 @@ test["core - single module - restart on-success"] = function()
         end
 
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
-            if line and line:match("restarting one") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting one:default") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -542,8 +590,8 @@ test["core - single module - restart delay"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("one started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("one:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -552,7 +600,7 @@ test["core - single module - restart delay"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("one:default exited with code 0") then
                 break
             end
@@ -563,8 +611,8 @@ test["core - single module - restart delay"] = function()
 
         local stopTime = os.time()
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
-            if line and line:match("restarting one") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("restarting one:default") then
                 break
             end
         end
@@ -598,8 +646,8 @@ test["core - single module - restart max retries"] = function()
         local startTime = os.time()
 
         while true do -- wait for service started
-            local line = ascendOutput:read("l")
-            if line and line:match("one started") then
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("one:default started") then
                 break
             end
             if os.time() > startTime + 10 then
@@ -608,7 +656,7 @@ test["core - single module - restart max retries"] = function()
         end
 
         while true do -- wait for service exists
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
             if line and line:match("one:default exited with code 0") then
                 break
             end
@@ -619,10 +667,10 @@ test["core - single module - restart max retries"] = function()
 
         local maxRetries = 0
         while true do -- wait for service to restart
-            local line = ascendOutput:read("l")
+            local line = ascendOutput:read("l", 2)
 
 
-            if line and line:match("restarting one") then
+            if line and line:match("restarting one:default") then
                 maxRetries = maxRetries + 1
             end
             if maxRetries == 6 then
