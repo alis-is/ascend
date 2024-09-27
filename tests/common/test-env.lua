@@ -12,6 +12,7 @@ local enter_dir = require "common.working-dir"
 ---@field vars table<string, table<string,string>>?
 ---@field assets table<string, string>?
 ---@field init string?
+---@field directories string[]?
 
 ---@class AscendTestEnvBase
 ---@field tests_dir string?
@@ -47,7 +48,7 @@ local function patch_definition(definition, envPath)
         if type(value) == "table" then
             definition[key] = patch_definition(value, envPath)
         end
-        if key == "working_dir" then
+        if key == "working_directory" then
             definition[key] = path.combine(envPath, value)
         end
     end
@@ -98,6 +99,11 @@ local function update_env(obj, options)
         if not copySuccess then
             return false, "Failed to copy asset: " .. source_path
         end
+    end
+
+    for _, dir_path in ipairs(options.directories) do
+        dir_path = path.combine(obj.path, dir_path)
+        fs.mkdirp(dir_path)
     end
 
     return true
@@ -168,11 +174,12 @@ end
 ---@param test fun(env: AscendTestEnv, ascendOutputStream: EliReadableStream): boolean, string
 function AscendTestEnv:run(test)
     if self.error then
-        return false, self.error
+        return self
     end
 
     if not self.is_open then
-        return false, "Test environment is closed"
+        self.error "test environment is closed"
+        return self
     end
 
     local srcDir <close> = enter_dir("../src")

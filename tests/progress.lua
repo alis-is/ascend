@@ -9,12 +9,14 @@ test["core - single module - working directory"] = function()
                 source_path = "assets/services/simple-working-dir.hjson",
                 definition = {
                     working_directory = "environments",
-
                 }
             }
         },
         assets = {
             ["scripts/working-dir.lua"] = "assets/scripts/working-dir.lua"
+        },
+        directories = {
+            "environments"
         }
     }
     local result, err = new_test_env(options):run(function(env, ascendOutput)
@@ -39,7 +41,7 @@ test["core - single module - working directory"] = function()
         local logFile = path.combine(logDir, "workingDir/default.log")
         while true do
             local logContent = fs.read_file(logFile)
-            -- print(logContent)
+            print(logContent)
             -- if logContent and logContent:match("date:") and logContent:match("service start") then
             --     break
             -- end
