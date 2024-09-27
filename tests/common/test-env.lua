@@ -34,6 +34,7 @@ local enter_dir = require "common.working-dir"
 ---@field update_env fun(self: AscendTestEnv, options: AscendTestEnvOptions): boolean, string
 ---@field run fun(self: AscendTestEnv, test: fun(env: AscendTestEnv, ascendOutput: EliReadableStream): boolean, string?): AscendTestEnv
 ---@field result fun(self: AscendTestEnv): boolean, string?
+---@field get_path fun(self: AscendTestEnv): string
 ---@field get_service_dir fun(self: AscendTestEnv): string
 ---@field get_log_dir fun(self: AscendTestEnv): string
 ---@field get_assets_dir fun(self: AscendTestEnv): string
@@ -203,6 +204,10 @@ function AscendTestEnv:run(test)
     ascendProcess:kill()
     ascendProcess:wait()
     return self
+end
+
+function AscendTestEnv:get_path()
+    return self.path
 end
 
 function AscendTestEnv:get_service_dir()

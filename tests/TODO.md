@@ -28,6 +28,7 @@ TESTS:
         - [x] restart delay
         - [x] restart max retries
         - [x] default values
+        - [ ] working directory
     - [ ] multi module
         - [x] automatic start
         - [x] manual start
@@ -46,9 +47,10 @@ TESTS:
         - [x] restart max retries
         - [x] default values
         - [x] global property propagation down to modules
+        - [ ] working directory
 - [ ] isolation
     - [ ] user
-    - [ ] working directory
+    - [x] ascend slice
 - [ ] Health checks
     - [ ] interval
     - [ ] timeout

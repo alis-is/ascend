@@ -1,18 +1,12 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["core - single module - automatic start"] = function()
+test["isolation - ascend slice"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["date"] = {
                 source_path = "assets/services/simple-date.hjson",
-                definition = {
-                    working_dir = "tmp", --- in case of this service it does not make a difference
-                    restart = "always",
-                    restart_delay = 5,
-                    -- log_file = "none" -- inherits stdout/stderr
-                }
             }
         },
         assets = {
