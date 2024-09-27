@@ -1,0 +1,16 @@
+{
+   modules: {
+      date: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/date.lua
+         ]
+      }
+      workingDir: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/working-dir.lua
+         ]
+      }
+   }
+}
