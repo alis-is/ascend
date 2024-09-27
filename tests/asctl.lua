@@ -21,6 +21,7 @@ test["asctl - list"] = function()
 
         while true do -- wait for service started
             local line = ascendOutput:read("l", 2)
+            if line == nil then os.exit(1) end
             if line and line:match("date:default started") then
                 break
             end

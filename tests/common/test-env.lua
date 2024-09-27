@@ -101,7 +101,8 @@ local function update_env(obj, options)
         end
     end
 
-    for _, dir_path in ipairs(options.directories) do
+    local directories = options.directories or {}
+    for _, dir_path in ipairs(directories) do
         dir_path = path.combine(obj.path, dir_path)
         fs.mkdirp(dir_path)
     end

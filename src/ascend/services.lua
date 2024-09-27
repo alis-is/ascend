@@ -305,7 +305,8 @@ function services.start(name, options)
 				goto CONTINUE
 			end
 		end
-		if not fs.exists(managedModule.definition.working_directory) then
+	
+		if managedModule.definition.working_directory and not fs.exists(managedModule.definition.working_directory) then
 			log_warn("working directory for ${name}:${module} does not exist",
 				{ name = serviceName, module = moduleName })
 			goto CONTINUE
