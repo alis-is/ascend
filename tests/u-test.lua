@@ -165,7 +165,7 @@ api.register_assert = function(assert_name, assert_func)
     rawset(api, assert_name, function(...)
         local result, msg = assert_func(...)
         if not result then
-            msg = msg or "Assertion "..assert_name.." failed"
+            msg = msg or ("Assertion "..assert_name.." failed")
             fail(msg)
         end
     end)
