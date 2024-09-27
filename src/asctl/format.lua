@@ -44,13 +44,6 @@ function format.show(status)
 	end
 end
 
-format["ascend-health"] = function (data)
-	print(data)
-	if data ~= "healthy" then
-		os.exit(1)
-	end
-end
-
 function format.default(data)
 	if is_tty then
 		print(hjson.encode(data))
