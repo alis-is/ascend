@@ -16,7 +16,7 @@ TESTS:
         - [x] manual start
         - [x] delayed start
         - [x] stop
-        - [ ] stop signal
+        - [x] stop signal
         - [ ] stop timeout (kill)
         - [x] restart always
             - [x] make sure it does NOT respects restart counters
@@ -33,7 +33,7 @@ TESTS:
         - [x] manual start
         - [x] delayed start
         - [x] stop
-        - [ ] stop signal
+        - [x] stop signal
         - [ ] stop timeout (kill)
         - [x] restart always
             - [x] make sure it does NOT respects restart counters
@@ -45,7 +45,7 @@ TESTS:
         - [x] restart delay
         - [x] restart max retries
         - [x] default values
-        - [ ] global property propagation down to modules
+        - [x] global property propagation down to modules
 - [ ] isolation
     - [ ] user
     - [ ] working directory
