@@ -335,6 +335,55 @@ test["core - single module - stop signal"] = function()
     test.assert(result, err)
 end
 
+test["core - single module - stop timeout (kill)"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["ignoreSigterm"] = {
+                source_path = "assets/services/simple-ignore-sigterm.hjson",
+                definition = {
+                    restart = "never",
+                }
+            }
+        },
+        assets = {
+            ["scripts/ignore-sigterm.lua"] = "assets/scripts/ignore-sigterm.lua"
+        }
+    }
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do -- wait for service started
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("ignoreSigterm:default started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        -- stop the service
+        local ok, outputOrError = env:asctl({ "stop", "ignoreSigterm" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("ignoreSigterm:default stopped %(killed%)") then
+                break
+            end
+            if os.time() > startTime + 20 then
+                return false, "Service did not stop in time"
+            end
+        end
+
+        return true
+    end):result()
+    test.assert(result, err)
+end
+
 test["core - single module - restart always"] = function()
     ---@type AscendTestEnvOptions
     local options = {
