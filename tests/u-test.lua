@@ -32,23 +32,23 @@ if arg then
     end
 end
 -- UTILS -----------------------------------------------------------------------
-local function red(str)    return grey and str or "\27[1;31m" .. str .. "\27[0m" end
-local function blue(str)   return grey and str or "\27[1;34m" .. str .. "\27[0m" end
-local function green(str)  return grey and str or "\27[1;32m" .. str .. "\27[0m" end
+local function red(str) return grey and str or "\27[1;31m" .. str .. "\27[0m" end
+local function blue(str) return grey and str or "\27[1;34m" .. str .. "\27[0m" end
+local function green(str) return grey and str or "\27[1;32m" .. str .. "\27[0m" end
 local function yellow(str) return grey and str or "\27[1;33m" .. str .. "\27[0m" end
 
-local tab_tag      = blue   "[----------]"
-local done_tag     = blue   "[==========]"
-local run_tag      = blue   "[ RUN      ]"
-local ok_tag       = green  "[       OK ]"
-local fail_tag     = red    "[      FAIL]"
+local tab_tag      = blue "[----------]"
+local done_tag     = blue "[==========]"
+local run_tag      = blue "[ RUN      ]"
+local ok_tag       = green "[       OK ]"
+local fail_tag     = red "[      FAIL]"
 local disabled_tag = yellow "[ DISABLED ]"
-local passed_tag   = green  "[  PASSED  ]"
-local failed_tag   = red    "[  FAILED  ]"
+local passed_tag   = green "[  PASSED  ]"
+local failed_tag   = red "[  FAILED  ]"
 
-local ntests = 0
-local failed = false
-local failed_list = {}
+local ntests       = 0
+local failed       = false
+local failed_list  = {}
 
 local function trace(start_frame)
     print "Trace:"
@@ -101,9 +101,9 @@ end
 -- PUBLIC API -----------------------------------------------------------------
 local api = { test_suite_name = "__root", skip = false }
 
-api.assert = function (cond, errMsg)
+api.assert = function(cond, errMsg)
     if not cond then
-        if type(errMsg) == 'string' then 
+        if type(errMsg) == 'string' then
             fail("assertion " .. tostring(cond) .. " failed - " .. errMsg)
         else
             fail("assertion " .. tostring(cond) .. " failed")
@@ -111,43 +111,43 @@ api.assert = function (cond, errMsg)
     end
 end
 
-api.equal = function (l, r)
+api.equal = function(l, r)
     if l ~= r then
         fail(tostring(l) .. " ~= " .. tostring(r))
     end
 end
 
-api.not_equal = function (l, r)
+api.not_equal = function(l, r)
     if l == r then
         fail(tostring(l) .. " == " .. tostring(r))
     end
 end
 
-api.almost_equal = function (l, r, diff)
+api.almost_equal = function(l, r, diff)
     if require("math").abs(l - r) > diff then
-        fail("|" .. tostring(l) .. " - " .. tostring(r) .."| > " .. tostring(diff))
+        fail("|" .. tostring(l) .. " - " .. tostring(r) .. "| > " .. tostring(diff))
     end
 end
 
-api.is_false = function (maybe_false)
+api.is_false = function(maybe_false)
     if maybe_false or type(maybe_false) ~= "boolean" then
         fail("got " .. tostring(maybe_false) .. " instead of false")
     end
 end
 
-api.is_true = function (maybe_true)
+api.is_true = function(maybe_true)
     if not maybe_true or type(maybe_true) ~= "boolean" then
         fail("got " .. tostring(maybe_true) .. " instead of true")
     end
 end
 
-api.is_not_nil = function (maybe_not_nil)
+api.is_not_nil = function(maybe_not_nil)
     if type(maybe_not_nil) == "nil" then
         fail("got nil")
     end
 end
 
-api.error_raised = function (f, error_message, ...)
+api.error_raised = function(f, error_message, ...)
     local status, err = pcall(f, ...)
     if status == true then
         fail("error not raised")
@@ -165,21 +165,21 @@ api.register_assert = function(assert_name, assert_func)
     rawset(api, assert_name, function(...)
         local result, msg = assert_func(...)
         if not result then
-            msg = msg or "Assertion "..assert_name.." failed"
+            msg = msg or ("Assertion " .. assert_name .. " failed")
             fail(msg)
         end
     end)
 end
 
 local function make_type_checker(typename)
-    api["is_" .. typename] = function (maybe_type)
+    api["is_" .. typename] = function(maybe_type)
         if type(maybe_type) ~= typename then
             fail("got " .. tostring(maybe_type) .. " instead of " .. typename, 4)
         end
     end
 end
 
-local supported_types = {"nil", "boolean", "string", "number", "userdata", "table", "function", "thread"}
+local supported_types = { "nil", "boolean", "string", "number", "userdata", "table", "function", "thread" }
 for i, supported_type in ipairs(supported_types) do
     make_type_checker(supported_type)
 end
@@ -212,7 +212,7 @@ local function run_test(test_suite, test_name, test_function, ...)
     local start = os.time()
 
     local status, err
-    for _, f in ipairs({test_suite.start_up,  test_function, test_suite.tear_down}) do
+    for _, f in ipairs({ test_suite.start_up, test_function, test_suite.tear_down }) do
         status, err = pcall(f, ...)
         if not status then
             failed = true
@@ -224,16 +224,16 @@ local function run_test(test_suite, test_name, test_function, ...)
 
     local is_test_failed = not status or failed
     log(string.format("%s %s %d sec",
-                            is_test_failed and fail_tag or ok_tag,
-                            full_test_name,
-                            os.difftime(stop, start)))
+        is_test_failed and fail_tag or ok_tag,
+        full_test_name,
+        os.difftime(stop, start)))
 
     if is_test_failed then
         table.insert(failed_list, full_test_name)
     end
 end
 
-api.summary = function ()
+api.summary = function()
     log(done_tag)
     local nfailed = #failed_list
     if nfailed == 0 then
@@ -248,12 +248,12 @@ api.summary = function ()
     end
 end
 
-api.result = function ( ... )
+api.result = function(...)
     return ntests, #failed_list
 end
 
-local default_start_up = function () end
-local default_tear_down = function () collectgarbage() end
+local default_start_up = function() end
+local default_tear_down = function() collectgarbage() end
 
 api.start_up = default_start_up
 api.tear_down = default_tear_down
@@ -268,8 +268,8 @@ local function handle_new_test(suite, test_name, test_function)
 
     local info = debug.getinfo(test_function)
     if info.nparams == nil and
-            string.sub(test_name, #test_name - 1, #test_name) ~= "_p"
-            or info.nparams == 0 then
+        string.sub(test_name, #test_name - 1, #test_name) ~= "_p"
+        or info.nparams == 0 then
         run_test(suite, test_name, test_function)
     end
 end
@@ -278,10 +278,10 @@ local function lookup_test_with_params(suite, test_name)
     local suite_name = suite.test_suite_name
 
     if all_test_cases[suite_name] and all_test_cases[suite_name][test_name] then
-        return function (...)
+        return function(...)
             run_test(suite
-                , test_name .. "(" .. stringize_var_arg(...) .. ")"
-                , all_test_cases[suite_name][test_name], ...)
+            , test_name .. "(" .. stringize_var_arg(...) .. ")"
+            , all_test_cases[suite_name][test_name], ...)
         end
     else
         local full_test_name = test_pretty_name(suite_name, test_name)
@@ -296,17 +296,19 @@ local function new_test_suite(_, name)
         test_suite_name = name,
         start_up = default_start_up,
         tear_down = default_tear_down,
-        skip = false }
+        skip = false
+    }
 
     setmetatable(test_suite, {
         __newindex = handle_new_test,
-        __index = lookup_test_with_params })
+        __index = lookup_test_with_params
+    })
     return test_suite
 end
 
 local test_suites = {}
 setmetatable(api, {
-    __index = function (tbl, name)
+    __index = function(tbl, name)
         if all_test_cases.__root[name] then
             return lookup_test_with_params(tbl, name)
         end

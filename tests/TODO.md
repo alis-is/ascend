@@ -4,9 +4,9 @@ NOTES:
 - there should be common function to setup environment for test before its run 
 
 PREP:
-- [ ] test-env
-    - [ ] run - run ascend
-    - [ ] new - additional env, config etc. if needed
+- [x] test-env
+    - [x] run - run ascend
+    - [x] new - additional env, config etc. if needed
 
 TESTS:
 - [ ] Core
@@ -16,8 +16,8 @@ TESTS:
         - [x] manual start
         - [x] delayed start
         - [x] stop
-        - [ ] stop signal
-        - [ ] stop timeout (kill)
+        - [x] stop signal
+        - [x] stop timeout (kill)
         - [x] restart always
             - [x] make sure it does NOT respects restart counters
         - [x] restart never
@@ -27,14 +27,15 @@ TESTS:
         - [x] restart on-success
         - [x] restart delay
         - [x] restart max retries
-        - [ ] default values
+        - [x] default values
+        - [ ] working directory
     - [ ] multi module
         - [x] automatic start
         - [x] manual start
         - [x] delayed start
         - [x] stop
-        - [ ] stop signal
-        - [ ] stop timeout (kill)
+        - [x] stop signal
+        - [x] stop timeout (kill)
         - [x] restart always
             - [x] make sure it does NOT respects restart counters
         - [x] restart never
@@ -44,24 +45,25 @@ TESTS:
         - [x] restart on-success
         - [x] restart delay
         - [x] restart max retries
-        - [ ] default values
-        - [ ] global property propagation down to modules
+        - [x] default values
+        - [x] global property propagation down to modules
+        - [ ] working directory
 - [ ] isolation
     - [ ] user
-    - [ ] working directory
+    - [x] ascend slice
 - [ ] Health checks
     - [ ] interval
     - [ ] timeout
     - [ ] retries
     - [ ] delay
     - [ ] action - none
-    - [ ] action -restart
+    - [ ] action - restart
 - [ ] Logs
     - [ ] rotate
     - [ ] simple file
     - [ ] max size
     - [ ] max files
-- [ ] asctl commands
+- [x] asctl commands
     - [x] list
     - [x] list --extended
     - [x] stop

@@ -1,0 +1,6 @@
+{
+   executable: ${INTERPRETER}
+   args: [
+      ${ENV_DIR}/assets/scripts/ignore-sigterm.lua
+   ]
+}
