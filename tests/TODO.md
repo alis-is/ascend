@@ -17,7 +17,7 @@ TESTS:
         - [x] delayed start
         - [x] stop
         - [x] stop signal
-        - [ ] stop timeout (kill)
+        - [x] stop timeout (kill)
         - [x] restart always
             - [x] make sure it does NOT respects restart counters
         - [x] restart never
@@ -35,7 +35,7 @@ TESTS:
         - [x] delayed start
         - [x] stop
         - [x] stop signal
-        - [ ] stop timeout (kill)
+        - [x] stop timeout (kill)
         - [x] restart always
             - [x] make sure it does NOT respects restart counters
         - [x] restart never
