@@ -59,7 +59,7 @@ TESTS:
     - [ ] action - none
     - [ ] action - restart
 - [ ] Logs
-    - [ ] rotate
+    - [x] rotate
     - [ ] simple file
     - [ ] max size
     - [ ] max files
