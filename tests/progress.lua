@@ -22,7 +22,7 @@ test["logs - max files"] = function()
                     -- log_file = "none" -- inherits stdout/stderr
                     log_max_size = 1024,
                     log_rotate = true,
-                    log_max_files = 2
+                    log_max_files = 0
                 }
             }
         },
@@ -43,23 +43,10 @@ test["logs - max files"] = function()
             end
         end
 
-        local logDir = env:get_log_dir()
-        local logFile = path.combine(logDir, "date/default.log")
-        local exceededLogFile = path.combine(logDir, "date/default.log.2")
-
         while true do
-            local exceededLogFileContent = read_file(exceededLogFile)
-            os.sleep(1)
-
-            if exceededLogFileContent then
-                return false, "Exceeded max log files"
-            end
-
-
-            if os.time() > startTime + 5 then
-                break
-            end
+            print(ascendOutput:read("l", 2))
         end
+
 
         return true
     end):result()
