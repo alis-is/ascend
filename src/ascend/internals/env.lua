@@ -139,12 +139,18 @@ local function validate_service_definition(definition)
 
 		if type(v.log_max_files) ~= "number" then
 			return false, string.interpolate("module ${name} - log_max_files must be a number", moduleInfo)
+		elseif v.log_max_files < 0 then
+			return false, string.interpolate("module ${name} - log_max_files must be greater than 0", moduleInfo)
 		end
 
-		if type(input.parse_size_value(v.log_max_size)) ~= "number" then
+		local max_log_file_size = input.parse_size_value(tostring(v.log_max_size))
+		if type(max_log_file_size) ~= "number" then
 			return false,
 				string.interpolate("module ${name} - log_max_size must be a number (accepts k, m, g suffixes)",
 					moduleInfo)
+		elseif max_log_file_size < 100 * 1024 then
+			return false,
+				string.interpolate("module ${name} - log_max_size must be greater than 100KB", moduleInfo)
 		end
 
 		if type(v.healthcheck) == "table" then -- healthchecks are optional so validate only if defined

@@ -44,6 +44,7 @@ function log.create_log_file(module_definition)
     log_file.filename = normalize_log_file_path(module_definition.log_file)
     log_file.max_file_size = module_definition.log_max_size
     log_file.max_file_count = module_definition.log_max_files
+    log_file.is_rotating = module_definition.log_rotate
 
     create_log_directory(log_file.filename)
     log_file.current_file = io.open(log_file.filename, "a+b")
@@ -51,13 +52,17 @@ function log.create_log_file(module_definition)
 
     -- Helper to rotate log files
     local function rotate_logs()
+        if not log_file.is_rotating or log_file.max_file_count <= 1 then
+            return
+        end
+
         -- Close the current log file if open
         if log_file.current_file then
             log_file.current_file:close()
         end
 
         -- Shift older logs
-        for i = log_file.max_file_count - 1, 1, -1 do
+        for i = log_file.max_file_count - 2, 1, -1 do
             local old_file = log_file.filename .. "." .. i
             local new_file = log_file.filename .. "." .. (i + 1)
             os.rename(old_file, new_file) -- Renames files to the next index
