@@ -61,7 +61,7 @@ TESTS:
 - [ ] Logs
     - [x] rotate
     - [ ] simple file
-    - [ ] max size
+    - [x] max size
     - [x] max files
 - [x] asctl commands
     - [x] list

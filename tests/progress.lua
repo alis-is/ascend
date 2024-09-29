@@ -1,28 +1,25 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-local function read_file(file_path)
+local function get_file_size(file_path)
     local file = io.open(file_path, "r")
     if file then
-        local content = file:read("*all")
+        local size = file:seek("end")
         file:close()
-        return content
+        return size
     else
         return nil
     end
 end
 
-test["logs - max files"] = function()
+test["logs - max size"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["date"] = {
                 source_path = "assets/services/simple-one-kb.hjson",
                 definition = {
-                    -- log_file = "none" -- inherits stdout/stderr
                     log_max_size = 1024,
-                    log_rotate = true,
-                    log_max_files = 0
                 }
             }
         },
@@ -43,10 +40,24 @@ test["logs - max files"] = function()
             end
         end
 
-        while true do
-            print(ascendOutput:read("l", 2))
-        end
+        local logDir = env:get_log_dir()
+        local logFile = path.combine(logDir, "date/default.log.1")
 
+        while true do
+            local logFileSize = get_file_size(logFile)
+            os.sleep(1)
+            if logFileSize then
+                print(logFileSize)
+            end
+
+            if logFileSize and logFileSize < 1024 then
+                break
+            end
+
+            if os.time() > startTime + 10 then
+                return false, "Log max size failed, either no log was written or size > 1024"
+            end
+        end
 
         return true
     end):result()
