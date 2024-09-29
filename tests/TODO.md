@@ -58,10 +58,10 @@ TESTS:
     - [ ] delay
     - [ ] action - none
     - [ ] action - restart
-- [ ] Logs
+- [x] Logs
     - [x] rotate
     - [x] simple file
-    - [ ] max size
+    - [x] max size
     - [x] max files
 - [x] asctl commands
     - [x] list

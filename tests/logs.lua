@@ -164,17 +164,19 @@ test["logs - max size"] = function()
 
         local logDir = env:get_log_dir()
         local logFile = path.combine(logDir, "date/default.log.1")
+        local nextLogFile = path.combine(logDir, "date/default.log.2")
 
         while true do
             local logFileSize = get_file_size(logFile)
+            local nextLogFileExists = read_file(nextLogFile) ~= nil
             os.sleep(1)
 
-            if logFileSize and logFileSize < 1024 then
+            if logFileSize and logFileSize > 1024 and nextLogFileExists then
                 break
             end
 
             if os.time() > startTime + 10 then
-                return false, "Log max size failed, either no log was written or size > 1024"
+                return false, "Service did not write to log in time"
             end
         end
 
