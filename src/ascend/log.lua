@@ -47,8 +47,10 @@ function log.create_log_file(module_definition)
     log_file.is_rotating = module_definition.log_rotate
 
     create_log_directory(log_file.filename)
-    log_file.current_file = io.open(log_file.filename, "a+b")
-    log_file.current_size = get_file_size(log_file.current_file)
+    if log_file.max_file_count > 0 then
+        log_file.current_file = io.open(log_file.filename, "a+b")
+        log_file.current_size = get_file_size(log_file.current_file)
+    end
 
     -- Helper to rotate log files
     local function rotate_logs()
