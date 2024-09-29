@@ -9,8 +9,8 @@ PREP:
     - [x] new - additional env, config etc. if needed
 
 TESTS:
-- [ ] Core
-    - [ ] single module
+- [x] Core
+    - [x] single module
         - [x] automatic start
         - [x] automatic start (2 services)
         - [x] manual start
@@ -28,8 +28,8 @@ TESTS:
         - [x] restart delay
         - [x] restart max retries
         - [x] default values
-        - [ ] working directory
-    - [ ] multi module
+        - [x] working directory
+    - [x] multi module
         - [x] automatic start
         - [x] manual start
         - [x] delayed start
@@ -47,9 +47,9 @@ TESTS:
         - [x] restart max retries
         - [x] default values
         - [x] global property propagation down to modules
-        - [ ] working directory
-- [ ] isolation
-    - [ ] user
+        - [x] working directory
+- [x] isolation
+    - [x] user
     - [x] ascend slice
 - [ ] Health checks
     - [ ] interval
@@ -58,11 +58,11 @@ TESTS:
     - [ ] delay
     - [ ] action - none
     - [ ] action - restart
-- [ ] Logs
-    - [ ] rotate
-    - [ ] simple file
-    - [ ] max size
-    - [ ] max files
+- [x] Logs
+    - [x] rotate
+    - [x] simple file
+    - [x] max size
+    - [x] max files
 - [x] asctl commands
     - [x] list
     - [x] list --extended
