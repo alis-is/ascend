@@ -62,7 +62,7 @@ TESTS:
     - [x] rotate
     - [ ] simple file
     - [ ] max size
-    - [ ] max files
+    - [x] max files
 - [x] asctl commands
     - [x] list
     - [x] list --extended

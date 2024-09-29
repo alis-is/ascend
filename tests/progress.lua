@@ -12,7 +12,7 @@ local function read_file(file_path)
     end
 end
 
-test["logs - rotate"] = function()
+test["logs - max files"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
@@ -45,33 +45,19 @@ test["logs - rotate"] = function()
 
         local logDir = env:get_log_dir()
         local logFile = path.combine(logDir, "date/default.log")
-        local rotatedLogFile = path.combine(logDir, "date/default.log.1")
-
-        local previousLogContent
-        local previousRotatedLogContent
-
-        local logFileIsRotated = false
-        local oldLogFileIsRotated = false
+        local exceededLogFile = path.combine(logDir, "date/default.log.2")
 
         while true do
-            local logContent = read_file(logFile)
-            local rotatedLogContent = read_file(rotatedLogFile)
+            local exceededLogFileContent = read_file(exceededLogFile)
             os.sleep(1)
 
-            if previousLogContent and logContent ~= previousLogContent then
-                logFileIsRotated = true
-            end
-            if previousRotatedLogContent and rotatedLogContent ~= previousRotatedLogContent then
-                oldLogFileIsRotated = true
-            end
-            if logFileIsRotated and oldLogFileIsRotated then
-                break
+            if exceededLogFileContent then
+                return false, "Exceeded max log files"
             end
 
-            previousLogContent = logContent
-            previousRotatedLogContent = rotatedLogContent
-            if os.time() > startTime + 10 then
-                return false, "Service did not write to log in time"
+
+            if os.time() > startTime + 5 then
+                break
             end
         end
 
