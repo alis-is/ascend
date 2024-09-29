@@ -1,30 +1,19 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-local function get_file_size(file_path)
-    local file = io.open(file_path, "r")
-    if file then
-        local size = file:seek("end")
-        file:close()
-        return size
-    else
-        return nil
-    end
-end
-
-test["logs - max size"] = function()
+test["logs - simple file"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["date"] = {
-                source_path = "assets/services/simple-one-kb.hjson",
+                source_path = "assets/services/simple-date.hjson",
                 definition = {
-                    log_max_size = 1024,
+                    log_file = "date/date.log"
                 }
             }
         },
         assets = {
-            ["scripts/one-kb.lua"] = "assets/scripts/one-kb.lua"
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
         }
     }
     local result, err = new_test_env(options):run(function(env, ascendOutput)
@@ -40,25 +29,18 @@ test["logs - max size"] = function()
             end
         end
 
+        -- check log exists
         local logDir = env:get_log_dir()
-        local logFile = path.combine(logDir, "date/default.log.1")
-
+        local logFile = path.combine(logDir, "date/date.log")
         while true do
-            local logFileSize = get_file_size(logFile)
-            os.sleep(1)
-            if logFileSize then
-                print(logFileSize)
-            end
-
-            if logFileSize and logFileSize < 1024 then
+            local logContent = fs.read_file(logFile)
+            if logContent and logContent:match("date:") and logContent:match("service start") then
                 break
             end
-
             if os.time() > startTime + 10 then
-                return false, "Log max size failed, either no log was written or size > 1024"
+                return false, "Service did not write to log in time"
             end
         end
-
         return true
     end):result()
     test.assert(result, err)

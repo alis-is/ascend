@@ -60,8 +60,8 @@ TESTS:
     - [ ] action - restart
 - [ ] Logs
     - [x] rotate
-    - [ ] simple file
-    - [x] max size
+    - [x] simple file
+    - [ ] max size
     - [x] max files
 - [x] asctl commands
     - [x] list
