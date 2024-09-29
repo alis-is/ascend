@@ -48,8 +48,8 @@ TESTS:
         - [x] default values
         - [x] global property propagation down to modules
         - [x] working directory
-- [ ] isolation
-    - [ ] user
+- [x] isolation
+    - [x] user
     - [x] ascend slice
 - [ ] Health checks
     - [ ] interval
