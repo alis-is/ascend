@@ -18,6 +18,7 @@ local enter_dir = require "common.working-dir"
 ---@field tests_dir string?
 ---@field service_dir string?
 ---@field assets_dir string?
+---@field healthchecks_dir string?
 ---@field path string
 ---@field vars table<string, table<string,string>>?
 
@@ -31,6 +32,7 @@ local enter_dir = require "common.working-dir"
 ---@field private logDir string?
 ---@field private service_dir string?
 ---@field private assets_dir string?
+---@field private healthchecks_dir string?
 ---@field private build_env fun(self: AscendTestEnv): table<string, string>
 ---@field update_env fun(self: AscendTestEnv, options: AscendTestEnvOptions): boolean, string
 ---@field run fun(self: AscendTestEnv, test: fun(env: AscendTestEnv, ascendOutput: EliReadableStream): boolean, string?): AscendTestEnv
@@ -101,6 +103,21 @@ local function update_env(obj, options)
         end
     end
 
+    for healthcheck_destination, healthcheck_source_path in pairs(options.healthchecks) do
+        local source_path = healthcheck_source_path or "."
+        if not path.isabs(source_path) then
+            source_path = path.combine(obj.tests_dir, healthcheck_source_path)
+        end
+
+        healthcheck_destination = path.combine(obj.healthchecks_dir, healthcheck_destination)
+        local dir = path.dir(healthcheck_destination)
+        fs.mkdirp(dir)
+        local copySuccess = fs.safe_copy(source_path, healthcheck_destination)
+        if not copySuccess then
+            return false, "Failed to copy healthcheck: " .. source_path
+        end
+    end
+
     local directories = options.directories or {}
     for _, dir_path in ipairs(directories) do
         dir_path = path.combine(obj.path, dir_path)
@@ -141,7 +158,8 @@ function AscendTestEnv:new(options)
     fs.mkdirp(obj.service_dir)
     obj.logDir = path.combine(obj.path, "logs")
     fs.mkdirp(obj.logDir)
-    fs.mkdirp(path.combine(obj.path, "healthchecks"))
+    obj.healthchecks_dir = path.combine(obj.path, "healthchecks")
+    fs.mkdirp(obj.healthchecks_dir)
     obj.assets_dir = path.combine(obj.path, "assets")
     fs.mkdirp(obj.assets_dir)
 

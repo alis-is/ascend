@@ -13,7 +13,7 @@ test["core - single module - automatic start"] = function()
                     -- restart_delay = 5,
                     -- log_file = "none" -- inherits stdout/stderr
                     healthcheck = {
-                        name = "/assets/healthchecks/exit1",
+                        name = "healthchecks/exit1",
                         action = "restart",
                         delay = 0,
                         retries = 3,
@@ -23,7 +23,10 @@ test["core - single module - automatic start"] = function()
             }
         },
         assets = {
-            ["scripts/date.lua"] = "assets/scripts/date.lua"
+            ["scripts/date.lua"] = "assets/scripts/date.lua",
+        },
+        healthchecks = {
+            ["exit1"] = "assets/healthchecks/exit1"
         }
     }
     local result, err = new_test_env(options):run(function(env, ascendOutput)
