@@ -1,41 +1,29 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-local function read_file(file_path)
-    local file = io.open(file_path, "r")
-    if file then
-        local content = file:read("*all")
-        file:close()
-        return content
-    else
-        return nil
-    end
-end
-
-local function get_file_size(file_path)
-    local file = io.open(file_path, "r")
-    if file then
-        local size = file:seek("end")
-        file:close()
-        return size
-    else
-        return nil
-    end
-end
-
-test["logs - max size"] = function()
+test["core - single module - automatic start"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["date"] = {
-                source_path = "assets/services/simple-one-kb.hjson",
+                source_path = "assets/services/simple-date.hjson",
                 definition = {
-                    log_max_size = 1024,
+                    -- working_dir = "tmp", --- in case of this service it does not make a difference
+                    -- restart = "always",
+                    -- restart_delay = 5,
+                    -- log_file = "none" -- inherits stdout/stderr
+                    healthcheck = {
+                        name = "/assets/healthchecks/exit1",
+                        action = "restart",
+                        delay = 0,
+                        retries = 3,
+                        interval = 1,
+                    }
                 }
             }
         },
         assets = {
-            ["scripts/one-kb.lua"] = "assets/scripts/one-kb.lua"
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
         }
     }
     local result, err = new_test_env(options):run(function(env, ascendOutput)
@@ -51,25 +39,43 @@ test["logs - max size"] = function()
             end
         end
 
-        local logDir = env:get_log_dir()
-        local logFile = path.combine(logDir, "date/default.log.1")
-        local nextLogFile = path.combine(logDir, "date/default.log.2")
-
         while true do
-            local logFileSize = get_file_size(logFile)
-            local nextLogFileExists = read_file(nextLogFile) ~= nil
-            os.sleep(1)
+            print(ascendOutput:read("l", 2))
+        end
 
-            if logFileSize and logFileSize > 1024 and nextLogFileExists then
+        -- check log exists
+        local logDir = env:get_log_dir()
+        local logFile = path.combine(logDir, "date/default.log")
+        while true do
+            local logContent = fs.read_file(logFile)
+            if logContent and logContent:match("date:") and logContent:match("service start") then
                 break
             end
-
             if os.time() > startTime + 10 then
                 return false, "Service did not write to log in time"
             end
         end
-
         return true
     end):result()
     test.assert(result, err)
 end
+
+
+-- {
+--     executable: bash
+--     args: [
+--         ./date.sh
+--     ]
+--     working_directory: ../tests/assets/scripts
+--     start_delay: 30
+--     restart: always
+--     restart_delay: 5
+-- 	restart_max_retries: 1
+--     // healthcheck: {
+--     //     name: exit1
+--     //     action: restart
+--     //     delay: 0
+-- 	// 	retries: 3
+-- 	// 	interval: 1
+--     // }
+-- }
