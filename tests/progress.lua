@@ -1,7 +1,7 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["health checks - retries"] = function()
+test["health checks - delay"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
@@ -11,7 +11,7 @@ test["health checks - retries"] = function()
                     healthcheck = {
                         name = "exit1.lua",
                         action = "restart",
-                        delay = 0,
+                        delay = 20,
                         retries = 3,
                         interval = 1,
                     }
@@ -57,30 +57,19 @@ test["health checks - retries"] = function()
             return false, "failed to decode show result"
         end
 
-        if (show_result.date.default.healthcheck.retries ~= 3) then
+        if (show_result.date.default.healthcheck.delay ~= 20) then
             return false, "Healthcheck setting is not updated correctly"
         end
 
 
-        local retries = 0
-        local retriesFinished = false
         while true do
             local line = ascendOutput:read("l", 1)
             print(line)
             if line and line:match("running healthcheck exit1.lua for date:default") then
-                retries = retries + 1
+                return false, 'healthcheck did not respect delay'
             end
-            if line and line:match("healthcheck for date:default failed with exit code 1") then
-                retriesFinished = true
-            end
-            if retriesFinished and retries == 3 then
+            if os.time() > startTime + 5 then
                 break
-            end
-            if retriesFinished then
-                return false, "no of retries is not correct"
-            end
-            if os.time() > startTime + 10 then
-                return false, "Service did not passed test in time"
             end
         end
 

@@ -54,8 +54,8 @@ TESTS:
 - [ ] Health checks
     - [x] interval
     - [x] timeout
-    - [ ] retries
-    - [ ] delay
+    - [x] retries
+    - [x] delay
     - [ ] action - none
     - [ ] action - restart
 - [x] Logs
