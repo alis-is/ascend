@@ -103,7 +103,7 @@ local function update_env(obj, options)
         end
     end
 
-    for healthcheck_destination, healthcheck_source_path in pairs(options.healthchecks) do
+    for healthcheck_destination, healthcheck_source_path in pairs(options.healthchecks or {}) do
         local source_path = healthcheck_source_path or "."
         if not path.isabs(source_path) then
             source_path = path.combine(obj.tests_dir, healthcheck_source_path)
