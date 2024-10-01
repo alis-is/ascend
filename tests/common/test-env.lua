@@ -13,6 +13,7 @@ local enter_dir = require "common.working-dir"
 ---@field assets table<string, string>?
 ---@field init string?
 ---@field directories string[]?
+---@field environment_variables table<string, string>?
 
 ---@class AscendTestEnvBase
 ---@field tests_dir string?
@@ -21,6 +22,7 @@ local enter_dir = require "common.working-dir"
 ---@field healthchecks_dir string?
 ---@field path string
 ---@field vars table<string, table<string,string>>?
+---@field environment_variables table<string, string>?
 
 ---@class AscendTestEnv: AscendTestEnvBase
 ---@field private path string
@@ -168,6 +170,7 @@ function AscendTestEnv:new(options)
         ENV_DIR = obj.path
     })
 
+    obj.environment_variables = options.environment_variables
     local ok, err = update_env(obj, options)
     if not ok then
         obj.error = err
@@ -177,7 +180,7 @@ function AscendTestEnv:new(options)
 end
 
 function AscendTestEnv:build_env(env)
-    return {
+    return util.merge_tables(env, {
         HOME = self.path,
         ASCEND_SERVICES = path.combine(self.path, "services"),
         ASCEND_LOGS = path.combine(self.path, "logs"),
@@ -187,10 +190,9 @@ function AscendTestEnv:build_env(env)
         ASCEND_SOCKET = path.combine(self.path, "ascend.sock"),
         APPS_BOOTSTRAP = path.combine(self.path, "apps-bootstrap"),
         PATH = os.getenv("PATH") or "",
-    }
+    })
 end
 
----@param test fun(env: AscendTestEnv, ascendOutputStream: EliReadableStream): boolean, string
 function AscendTestEnv:run(test)
     if self.error then
         return self
@@ -206,12 +208,12 @@ function AscendTestEnv:run(test)
         stdio = {
             output = "pipe",
         },
-        env = self:build_env(),
+        env = self:build_env(self.environment_variables),
         -- wait = true,
     }) --[[@as EliProcess]]
 
     if not ascendProcess then
-        self.error = err
+        self.error = tostring(err)
         return self
     end
 
