@@ -38,12 +38,6 @@ test["health checks - interval"] = function()
             end
         end
 
-        --// TODO: remove after eli 0.34.5 release
-        local envpath = env:get_path()
-        local healthcheckFile = path.combine(envpath, "healthchecks/exit1.lua")
-        os.execute("chmod 775 " .. healthcheckFile)
-        -- till here
-
         local ok, outputOrError = env:asctl({ "show", "date" })
         if not ok then
             return false, outputOrError
@@ -117,12 +111,6 @@ test["health checks - timeout"] = function()
             end
         end
 
-        --// TODO: remove after eli 0.34.5 release
-        local envpath = env:get_path()
-        local healthcheckFile = path.combine(envpath, "healthchecks/loop.lua")
-        os.execute("chmod 775 " .. healthcheckFile)
-        -- till here
-
         local ok, outputOrError = env:asctl({ "show", "date" })
         if not ok then
             return false, outputOrError
@@ -190,12 +178,6 @@ test["health checks - retries"] = function()
                 return false, "Service did not start in time"
             end
         end
-
-        --// TODO: remove after eli 0.34.5 release
-        local envpath = env:get_path()
-        local healthcheckFile = path.combine(envpath, "healthchecks/exit1.lua")
-        os.execute("chmod 775 " .. healthcheckFile)
-        -- till here
 
         local ok, outputOrError = env:asctl({ "show", "date" })
         if not ok then
@@ -278,12 +260,6 @@ test["health checks - delay"] = function()
             end
         end
 
-        --// TODO: remove after eli 0.34.5 release
-        local envpath = env:get_path()
-        local healthcheckFile = path.combine(envpath, "healthchecks/exit1.lua")
-        os.execute("chmod 775 " .. healthcheckFile)
-        -- till here
-
         local ok, outputOrError = env:asctl({ "show", "date" })
         if not ok then
             return false, outputOrError
@@ -352,12 +328,6 @@ test["health checks - action - none"] = function()
                 return false, "Service did not start in time"
             end
         end
-
-        --// TODO: remove after eli 0.34.5 release
-        local envpath = env:get_path()
-        local healthcheckFile = path.combine(envpath, "healthchecks/exit1.lua")
-        os.execute("chmod 775 " .. healthcheckFile)
-        -- till here
 
         local ok, outputOrError = env:asctl({ "show", "date" })
         if not ok then
@@ -432,12 +402,6 @@ test["health checks - action - restart"] = function()
                 return false, "Service did not start in time"
             end
         end
-
-        --// TODO: remove after eli 0.34.5 release
-        local envpath = env:get_path()
-        local healthcheckFile = path.combine(envpath, "healthchecks/exit1.lua")
-        os.execute("chmod 775 " .. healthcheckFile)
-        -- till here
 
         local ok, outputOrError = env:asctl({ "show", "date" })
         if not ok then
