@@ -57,7 +57,7 @@ TESTS:
     - [x] retries
     - [x] delay
     - [ ] action - none
-    - [ ] action - restart
+    - [x] action - restart
 - [x] Logs
     - [x] rotate
     - [x] simple file
