@@ -38,12 +38,6 @@ test["health checks - action - none"] = function()
             end
         end
 
-        --// TODO: remove after eli 0.34.5 release
-        local envpath = env:get_path()
-        local healthcheckFile = path.combine(envpath, "healthchecks/exit1.lua")
-        os.execute("chmod 775 " .. healthcheckFile)
-        -- till here
-
         local ok, outputOrError = env:asctl({ "show", "date" })
         if not ok then
             return false, outputOrError
