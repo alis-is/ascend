@@ -1,4 +1,0 @@
-#!/bin/sh
-
-echo "Exiting with 0"
-exit 0

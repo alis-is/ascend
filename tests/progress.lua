@@ -9,11 +9,11 @@ test["core - single module - automatic start"] = function()
                 source_path = "assets/services/simple-date.hjson",
                 definition = {
                     -- working_dir = "tmp", --- in case of this service it does not make a difference
-                    -- restart = "always",
+                    restart = "always",
                     -- restart_delay = 5,
                     -- log_file = "none" -- inherits stdout/stderr
                     healthcheck = {
-                        name = "healthchecks/exit1",
+                        name = "exit1.lua",
                         action = "restart",
                         delay = 0,
                         retries = 3,
@@ -26,7 +26,7 @@ test["core - single module - automatic start"] = function()
             ["scripts/date.lua"] = "assets/scripts/date.lua",
         },
         healthchecks = {
-            ["exit1"] = "assets/healthchecks/exit1"
+            ["exit1.lua"] = "assets/healthchecks/exit1.lua"
         }
     }
     local result, err = new_test_env(options):run(function(env, ascendOutput)
