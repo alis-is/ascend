@@ -48,7 +48,6 @@ test["health checks - interval"] = function()
         if not ok then
             return false, outputOrError
         end
-        print(outputOrError)
 
         local hjson = require "hjson"
         local output = outputOrError
