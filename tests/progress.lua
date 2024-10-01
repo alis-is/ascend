@@ -1,7 +1,7 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["health checks - timeout"] = function()
+test["health checks - retries"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
@@ -9,12 +9,11 @@ test["health checks - timeout"] = function()
                 source_path = "assets/services/simple-date.hjson",
                 definition = {
                     healthcheck = {
-                        name = "loop.lua",
+                        name = "exit1.lua",
                         action = "restart",
                         delay = 0,
                         retries = 3,
                         interval = 1,
-                        timeout = 1,
                     }
                 }
             }
@@ -23,7 +22,7 @@ test["health checks - timeout"] = function()
             ["scripts/date.lua"] = "assets/scripts/date.lua",
         },
         healthchecks = {
-            ["loop.lua"] = "assets/healthchecks/loop.lua"
+            ["exit1.lua"] = "assets/healthchecks/exit1.lua"
         }
     }
     local result, err = new_test_env(options):run(function(env, ascendOutput)
@@ -41,7 +40,7 @@ test["health checks - timeout"] = function()
 
         --// TODO: remove after eli 0.34.5 release
         local envpath = env:get_path()
-        local healthcheckFile = path.combine(envpath, "healthchecks/loop.lua")
+        local healthcheckFile = path.combine(envpath, "healthchecks/exit1.lua")
         os.execute("chmod 775 " .. healthcheckFile)
         -- till here
 
@@ -58,18 +57,30 @@ test["health checks - timeout"] = function()
             return false, "failed to decode show result"
         end
 
-        if (show_result.date.default.healthcheck.timeout ~= 1) then
+        if (show_result.date.default.healthcheck.retries ~= 3) then
             return false, "Healthcheck setting is not updated correctly"
         end
 
+
+        local retries = 0
+        local retriesFinished = false
         while true do
             local line = ascendOutput:read("l", 1)
             print(line)
-            if line and line:match("healthcheck for date:default timed out") then
+            if line and line:match("running healthcheck exit1.lua for date:default") then
+                retries = retries + 1
+            end
+            if line and line:match("healthcheck for date:default failed with exit code 1") then
+                retriesFinished = true
+            end
+            if retriesFinished and retries == 3 then
                 break
             end
+            if retriesFinished then
+                return false, "no of retries is not correct"
+            end
             if os.time() > startTime + 10 then
-                return false, "Service did not timeout in time"
+                return false, "Service did not passed test in time"
             end
         end
 

@@ -53,7 +53,7 @@ TESTS:
     - [x] ascend slice
 - [ ] Health checks
     - [x] interval
-    - [ ] timeout
+    - [x] timeout
     - [ ] retries
     - [ ] delay
     - [ ] action - none
