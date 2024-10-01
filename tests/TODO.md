@@ -51,13 +51,13 @@ TESTS:
 - [x] isolation
     - [x] user
     - [x] ascend slice
-- [ ] Health checks
-    - [ ] interval
-    - [ ] timeout
-    - [ ] retries
-    - [ ] delay
-    - [ ] action - none
-    - [ ] action - restart
+- [x] Health checks
+    - [x] interval
+    - [x] timeout
+    - [x] retries
+    - [x] delay
+    - [x] action - none
+    - [x] action - restart
 - [x] Logs
     - [x] rotate
     - [x] simple file
