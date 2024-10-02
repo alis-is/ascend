@@ -1,32 +1,27 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
-test["health checks - action - none"] = function()
+test["advanced - init - shell script"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
             ["date"] = {
                 source_path = "assets/services/simple-date.hjson",
-                definition = {
-                    healthcheck = {
-                        name = "exit1.lua",
-                        action = "none",
-                        delay = 0,
-                        retries = 1,
-                        interval = 1,
-                    }
-                }
             }
         },
         assets = {
             ["scripts/date.lua"] = "assets/scripts/date.lua",
         },
-        healthchecks = {
-            ["exit1.lua"] = "assets/healthchecks/exit1.lua"
+        environment_variables = {
+            ASCEND_INIT = "assets/scripts/ascend-init.sh"
         }
     }
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
+
+        while true do
+            print(ascendOutput:read("l", 2))
+        end
 
         while true do -- wait for service started
             local line = ascendOutput:read("l", 2)
