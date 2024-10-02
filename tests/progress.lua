@@ -21,6 +21,7 @@ test["advanced - init - shell script"] = function()
 
         while true do
             print(ascendOutput:read("l", 2))
+            os.sleep(1)
         end
 
         while true do -- wait for service started
