@@ -1,3 +1,3 @@
 #!/usr/bin/env eli
 
-print("init script")
+print("script initialized")

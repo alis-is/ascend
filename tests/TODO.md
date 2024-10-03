@@ -77,7 +77,7 @@ TESTS:
     - [x] logs -f
     - [x] show
 - [ ] advanced
-    - [ ] init - lua
-    - [ ] init - shell script
+    - [x] init - lua
+    - [x] init - shell script
     - [ ] ami apps
     - [ ] ami bootstrap

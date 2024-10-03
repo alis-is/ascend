@@ -17,10 +17,10 @@ local client = require "asctl.client"
 GLOBAL_LOGGER.options.level = args.options["log-level"] or "info"
 
 local commands = {
-	start = function (parameters, _)
+	start = function(parameters, _)
 		local response, err = client.execute("start", parameters)
 		if not response then
-			log_error(err)
+			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		local stop_jobs = response.data
@@ -32,10 +32,10 @@ local commands = {
 			end
 		end
 	end,
-	stop = function (parameters, _)
+	stop = function(parameters, _)
 		local response, err = client.execute("stop", parameters)
 		if not response then
-			log_error(err)
+			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		local stop_jobs = response.data
@@ -47,10 +47,10 @@ local commands = {
 			end
 		end
 	end,
-	restart = function (parameters, _)
+	restart = function(parameters, _)
 		local response, err = client.execute("restart", parameters)
 		if not response then
-			log_error(err)
+			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		local stop_jobs = response.data
@@ -62,7 +62,7 @@ local commands = {
 			end
 		end
 	end,
-	reload = function (parameters, _)
+	reload = function(parameters, _)
 		local response, err = client.execute("reload", parameters)
 		if not response then
 			log_error(string.interpolate("failed to reload: ${error}", { error = err }))
@@ -70,10 +70,10 @@ local commands = {
 			log_info("reloaded")
 		end
 	end,
-	["ascend-health"] = function (parameters, _)
+	["ascend-health"] = function(parameters, _)
 		local response, err = client.execute("ascend-health", parameters)
 		if not response then
-			log_error(err)
+			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		if response.data ~= "healthy" then
@@ -83,36 +83,36 @@ local commands = {
 			log_info("healthy")
 		end
 	end,
-	list = function (parameters, options)
+	list = function(parameters, options)
 		parameters.options = options
 
 		local response, err = client.execute("list", parameters)
 		if not response then
-			log_error(err)
+			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		print(format.list(response.data))
 	end,
-	status = function (parameters, _)
+	status = function(parameters, _)
 		local response, err = client.execute("status", parameters)
 		if not response then
-			log_error(err)
+			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		print(format.status(response.data))
 	end,
-	show = function (parameters, options)
+	show = function(parameters, options)
 		local response, err = client.execute("show", parameters)
 		if not response then
-			log_error(err)
+			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		print(format.show(response.data))
 	end,
-	logs = function (parameters, options)
+	logs = function(parameters, options)
 		local response, err = client.execute("logs", parameters)
 		if not response then
-			log_error(err)
+			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		local services = response.data
