@@ -11,13 +11,27 @@ test["advanced - init - shell script"] = function()
         },
         assets = {
             ["scripts/date.lua"] = "assets/scripts/date.lua",
+            ["scripts/ascend-init.lua"] = "assets/scripts/ascend-init.lua"
         },
         environment_variables = {
-            ASCEND_INIT = "assets/scripts/ascend-init.sh"
-        }
+            ASCEND_INIT = "${ENV_DIR}/assets/scripts/ascend-init.sh"
+        },
+
+
     }
     local result, err = new_test_env(options):run(function(env, ascendOutput)
         local startTime = os.time()
+
+        os.execute('export ASCEND_INIT="tezbox init --setup-services"')
+        os.execute("echo $ASCEND_INIT")
+        print(os.getenv("ASCEND_INIT"))
+        local ascend_init_value = os.getenv("ASCEND_INIT")
+
+        if ascend_init_value then
+            print("ASCEND_INIT: " .. ascend_init_value)
+        else
+            print("ASCEND_INIT is not set.")
+        end
 
         while true do
             print(ascendOutput:read("l", 2))
