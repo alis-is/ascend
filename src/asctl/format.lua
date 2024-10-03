@@ -24,10 +24,23 @@ function format.status(status)
 	end
 end
 
-format["ascend-health"] = function (data)
-	print(data)
-	if data ~= "healthy" then
-		os.exit(1)
+---@param status table<string, any>
+function format.list(status)
+	if is_tty then
+		-- // TODO: format nicely
+		print(hjson.encode(status))
+	else
+		print(hjson.encode_to_json(status, { indent = false }))
+	end
+end
+
+---@param status table<string, any>
+function format.show(status)
+	if is_tty then
+		-- // TODO: format nicely
+		print(hjson.encode(status))
+	else
+		print(hjson.encode_to_json(status, { indent = false }))
 	end
 end
 

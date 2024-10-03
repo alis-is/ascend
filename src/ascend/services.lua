@@ -10,6 +10,7 @@ local log = require "ascend.log"
 --- failed - service failed -> exit code is not 0
 --- stopped - service was stopped -> exit code was 0
 --- stopping - service is stopping
+--- to-be-started - service is waiting to be started - delayed start = later than boot but not counted into start count
 ---@alias AscendManagedServiceModuleStatusKind "active" | "inactive" | "failed" | "stopped" | "stopping" | "to-be-started"
 
 ---@class AscendManagedServiceModuleHealth
@@ -125,28 +126,88 @@ function services.reload()
 			source = definition.source
 		}
 	end
+
+	local to_remove = {}
+	for name in pairs(managedServices) do
+		if not definitions[name] then
+			table.insert(to_remove, name)
+		end
+	end
+
+	for _, name in ipairs(to_remove) do
+		services.stop(name)
+		managedServices[name] = nil
+	end
+
 	return true
 end
 
+---@param services string[]?
+---@param extended boolean?
 ---@return table<string, string[]>
-function services.list()
+function services.list(services, extended)
 	local list = {}
 	for name, _ in pairs(managedServices) do
-		list[name] = {}
-		for moduleName, _ in pairs(managedServices[name].modules) do
-			table.insert(list[name], moduleName)
+		if services and #services > 0 and not table.includes(services, name) then
+			goto CONTINUE
 		end
+		list[name] = {}
+		for moduleName, module in pairs(managedServices[name].modules) do
+			if extended then
+				list[name][moduleName] = {
+					state = module.state,
+					health = module.health.state,
+					pid = module.process and module.process:get_pid(),
+				}
+			else
+				table.insert(list[name], moduleName)
+			end
+		end
+		::CONTINUE::
 	end
 	return list
 end
 
+---@param names string[]
+---@return table<string, any>?, string?
+function services.show(names)
+	local result = {}
+	for _, name in ipairs(names) do
+		local serviceName, moduleName = name_to_service_module(name)
+		local service = managedServices[serviceName]
+		if not service then
+			return nil, string.interpolate("service ${name} not found", { name = serviceName })
+		end
+
+		local modules = service.modules
+		if moduleName ~= "all" then
+			modules = { [moduleName] = service.modules[moduleName] }
+		end
+
+		local modulesResult = {}
+		for moduleName, module in pairs(modules) do
+			modulesResult[moduleName] = module.definition
+		end
+		result[serviceName] = modulesResult
+	end
+	return result
+end
+
+---@class StartOptions
+---@field manual boolean?
+---@field isBoot boolean?
+
 ---@param module AscendManagedServiceModule
----@param manualStart boolean?
+---@param options StartOptions?
 ---@return boolean
 ---@return string?
-local function start_module(module, manualStart)
+local function start_module(module, options)
 	if module.state == "active" then
 		return true
+	end
+
+	if type(options) ~= "table" then
+		options = {}
 	end
 
 	local needsDirChange = type(module.definition.working_directory) == "string"
@@ -155,7 +216,7 @@ local function start_module(module, manualStart)
 		os.chdir(module.definition.working_directory)
 	end
 
-	if not manualStart then
+	if not options.manual and not options.isBoot then
 		module.restartCount = module.restartCount + 1
 	else -- if manually started, reset restart count
 		module.restartCount = 0
@@ -166,13 +227,14 @@ local function start_module(module, manualStart)
 		module.definition.user = nil
 	end
 
+	local output = module.definition.log_file == "none" and "inherit" or "pipe"
 	local ok, process = proc.safe_spawn(module.definition.executable, module.definition.args,
 		{
 			env = module.definition.environment,
 			wait = false,
 			stdio = {
 				stdin = "ignore",
-				output = "pipe",
+				output = output,
 			},
 			createProcessGroup = true,
 			username = module.definition.user
@@ -196,17 +258,14 @@ local function start_module(module, manualStart)
 		unhealthyCheckCount = 0,
 		isCheckInProgress = false
 	}
-	module.__output = process:get_stdout() -- stdout and stderr are combined because of `output = "pipe"`
-	module.__output:set_nonblocking(true)
-	module.__output_file = module.__output_file or log.create_log_file(module.definition)
-	module.__output_file:write(" -- service start --\n")
+	if module.definition.log_file ~= "none" then
+		module.__output = process:get_stdout() -- stdout and stderr are combined because of `output = "pipe"`
+		module.__output_file = module.__output_file or log.create_log_file(module.definition)
+		module.__output_file:write(" -- service start --\n")
+	end
 
 	return true
 end
-
----@class StartOptions
----@field manual boolean?
----@field isBoot boolean?
 
 ---@param name string
 ---@param options StartOptions?
@@ -230,9 +289,9 @@ function services.start(name, options)
 				{ module = moduleName, service = serviceName })
 	end
 
-	---@type string[]
-	local failedModules = {}
-	local startedModules = 0
+	-- ---@type string[]
+	-- local failedModules = {}
+	-- local startedModules = 0
 	for moduleName, managedModule in pairs(modulesToManage) do
 		if options.isBoot then
 			if not managedModule.definition.autostart then
@@ -246,6 +305,12 @@ function services.start(name, options)
 				goto CONTINUE
 			end
 		end
+	
+		if managedModule.definition.working_directory and not fs.exists(managedModule.definition.working_directory) then
+			log_warn("working directory for ${name}:${module} does not exist",
+				{ name = serviceName, module = moduleName })
+			goto CONTINUE
+		end
 		log_debug("starting ${name}:${module} - ${executable} from '${workingDirectory}'",
 			{
 				name = serviceName,
@@ -253,9 +318,8 @@ function services.start(name, options)
 				executable = managedModule.definition.executable,
 				module = moduleName
 			})
-		local ok, err = start_module(managedModule, options.manual)
+		local ok, err = start_module(managedModule, options)
 		if not ok then
-			table.insert(failedModules, moduleName)
 			log_debug("failed to start ${name}:${module} (${executable}) from '${workingDirectory}' - ${error}",
 				{
 					name = serviceName,
@@ -264,23 +328,11 @@ function services.start(name, options)
 					module = moduleName,
 					error = err
 				})
+			log_warn("failed to start ${name}:${module}", { name = serviceName, module = moduleName })
 		else
-			startedModules = startedModules + 1
+			log_info("${name}:${module} started", { name = serviceName, module = moduleName })
 		end
 		::CONTINUE::
-	end
-
-	if #failedModules > 0 then
-		log_debug("failed to start ${count} of ${total} modules of ${name}",
-			{ count = #failedModules, total = modulesToManageCount, name = serviceName })
-		local resultMessage = #failedModules == 0 and "failed to start service ${name}" or
-			"failed to start service ${name}:${modules}"
-		return false,
-			string.interpolate(resultMessage,
-				{ name = serviceName, modules = string.join(",", table.unpack(failedModules)) })
-	end
-	if startedModules > 0 then
-		log_info("${name} started", { name = name })
 	end
 
 	return true
@@ -289,7 +341,7 @@ end
 ---@param module AscendManagedServiceModule
 ---@param exit_code integer
 ---@param manual boolean?
-local function update_module_state_to_stopepd(module, exit_code,  manual)
+local function update_module_state_to_stopepd(module, exit_code, manual)
 	module.state = "stopped"
 	module.exit_code = exit_code
 	module.process = nil
@@ -306,12 +358,10 @@ end
 ---@param manual boolean?
 ---@return boolean, string?
 function services.stop(name, manual)
-	log_debug("stopping service ${name}", { name = name })
-
 	local serviceName, moduleName = name_to_service_module(name)
 	local service = managedServices[serviceName]
 	if not service then
-		return false, string.interpolate("service ${name} not found", { name = serviceName })
+		return false, string.interpolate("${name} not found", { name = serviceName })
 	end
 
 	local modulesToStop = moduleName == "all" and service.modules or { [moduleName] = service.modules[moduleName] }
@@ -324,13 +374,12 @@ function services.stop(name, manual)
 
 	local stopJobs = {}
 
-	---@type string[]
-	local failedModules = {}
 	for moduleName, module in pairs(modulesToStop) do
 		if module.state ~= "active" then
 			goto CONTINUE
 		end
 
+		log_debug("stopping ${service}:${module}", { service = serviceName, module = moduleName })
 		module.state = "stopping"
 
 		table.insert(stopJobs, coroutine.create(function()
@@ -352,7 +401,7 @@ function services.stop(name, manual)
 				local exit_code = module.process:wait(1, 1000)
 				if exit_code >= 0 then
 					update_module_state_to_stopepd(module, exit_code, manual)
-					log_debug("${service}:${module} stopped", { service = serviceName, module = moduleName })
+					log_info("${service}:${module} stopped", { service = serviceName, module = moduleName })
 					return
 				end
 				coroutine.yield()
@@ -375,28 +424,16 @@ function services.stop(name, manual)
 			local exit_code = module.process:wait(10, 1000)
 			if exit_code >= 0 then
 				update_module_state_to_stopepd(module, exit_code, manual)
-				log_debug("${service}:${module} killed", { service = serviceName, module = moduleName })
+				log_info("${service}:${module} stopped (killed)", { service = serviceName, module = moduleName })
 				return
 			end
 
-			table.insert(failedModules, moduleName)
+			log_warn("failed to stop ${service}:${module}", { service = serviceName, module = moduleName })
 		end))
 		::CONTINUE::
 	end
 
 	jobs.run_queue(stopJobs)
-
-	if #failedModules > 0 then
-		log_debug("failed to stop ${count} of ${total} modules of ${name}",
-			{ count = #failedModules, total = modulesToManageCount, name = serviceName })
-		local resultMessage = #failedModules == 0 and "failed to stop service ${name}" or
-			"failed to stop service ${name}:${modules}"
-		return false,
-			string.interpolate(resultMessage,
-				{ name = serviceName, modules = string.join(",", table.unpack(failedModules)) })
-	end
-	log_info("${name} stopped", { name = name })
-
 	return true
 end
 
@@ -516,7 +553,9 @@ function services.manage(start)
 			local time = os.time()
 			for serviceName, service in pairs(managedServices) do
 				for moduleName, module in pairs(service.modules) do
-					log.collect_output(module)
+					if module.state ~= "to-be-started" then -- the log dir may not be created yet
+						log.collect_output(module)
+					end
 
 					if table.includes({ "stopping" }, module.state) then -- skip if modules is being managed by state like "stopping"
 						goto CONTINUE
@@ -528,12 +567,13 @@ function services.manage(start)
 
 					if module.state == "to-be-started" then
 						if module.toBeStartedAt < time then
-							log_debug("delayed start of ${service}:${module}",
-								{ service = serviceName, module = moduleName })
-							local ok, err = start_module(module)
+							local ok, err = start_module(module, { isBoot = true })
 							if not ok then
 								log_error("failed to start ${service}:${module} - ${error}",
 									{ service = serviceName, module = moduleName, error = err })
+							else
+								log_debug("${service}:${module} started (delayed)",
+									{ service = serviceName, module = moduleName })
 							end
 						end
 						goto CONTINUE
@@ -560,12 +600,12 @@ function services.manage(start)
 
 					local stoppedAt = module.stopped or 0
 					local timeToRestart = module.definition.restart_delay + stoppedAt < time
-					local restartsExhausted = module.definition.restart_max_retries > 0 and
+					local restartsExhausted = module.definition.restart ~= "always" and
+						module.definition.restart_max_retries > 0 and
 						module.restartCount >= module.definition.restart_max_retries
-
 					if not module.manuallyStopped and timeToRestart and not restartsExhausted then
 						local shouldStart = false
-						if module.definition.restart == "always" or
+						if module.definition.restart == "always" or module.definition.restart == "on-exit" or
 							(module.definition.restart == "on-success" and module.state == "stopped") or
 							(module.definition.restart == "on-failure" and module.state == "failed") then
 							shouldStart = true

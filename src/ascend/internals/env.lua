@@ -35,12 +35,12 @@ local aenv = util.merge_tables({
 ---@field depends string[]? -- //TODO: implement
 ---@field autostart boolean?
 ---@field start_delay number?
----@field restart "always" | "never" | "on-failure" | "on-success" | nil
+---@field restart "always" | "never" | "on-failure" | "on-success" | "on-exit" | nil
 ---@field restart_delay number?
 ---@field restart_max_retries number?
 ---@field healthcheck AscendHealthCheckDefinition?
 ---@field user string?
----@field log_file string?
+---@field log_file string | "none" | nil
 ---@field log_rotate boolean
 ---@field log_max_size number
 ---@field log_max_files number
@@ -89,9 +89,10 @@ local function validate_service_definition(definition)
 			return false, string.interpolate("module ${name} - restart must be a string", moduleInfo)
 		end
 
-		if not table.includes({ "always", "never", "on-failure" }, v.restart) then
+		if not table.includes({ "always", "never", "on-failure", "on-success", "on-exit" }, v.restart) then
 			return false,
-				string.interpolate("module ${name} - restart must be one of: always, never, on-failure", moduleInfo)
+				string.interpolate("module ${name} - restart must be one of: always, never, on-failure, on-success",
+					moduleInfo)
 		end
 
 		if type(v.restart_delay) ~= "number" then
@@ -126,7 +127,9 @@ local function validate_service_definition(definition)
 		if type(v.log_file) == "string" and path.isabs(v.log_file) then
 			local dir = path.dir(v.log_file)
 			if not fs.exists(dir) then
-				return false, string.interpolate("module ${name} - log_file directory ${dir} does not exist", { name = k, dir = dir })
+				return false,
+					string.interpolate("module ${name} - log_file directory ${dir} does not exist",
+						{ name = k, dir = dir })
 			end
 		end
 
@@ -136,10 +139,18 @@ local function validate_service_definition(definition)
 
 		if type(v.log_max_files) ~= "number" then
 			return false, string.interpolate("module ${name} - log_max_files must be a number", moduleInfo)
+		elseif v.log_max_files < 0 then
+			return false, string.interpolate("module ${name} - log_max_files must be greater than 0", moduleInfo)
 		end
 
-		if type(input.parse_size_value(v.log_max_size)) ~= "number" then
-			return false, string.interpolate("module ${name} - log_max_size must be a number (accepts k, m, g suffixes)", moduleInfo)
+		local max_log_file_size = input.parse_size_value(tostring(v.log_max_size))
+		if type(max_log_file_size) ~= "number" then
+			return false,
+				string.interpolate("module ${name} - log_max_size must be a number (accepts k, m, g suffixes)",
+					moduleInfo)
+		elseif max_log_file_size < 1024 then
+			return false,
+				string.interpolate("module ${name} - log_max_size must be greater than 1KB", moduleInfo)
 		end
 
 		if type(v.healthcheck) == "table" then -- healthchecks are optional so validate only if defined
@@ -148,7 +159,8 @@ local function validate_service_definition(definition)
 			end
 
 			if type(v.healthcheck.action) == "string" and not table.includes({ "restart", "none" }, v.healthcheck.action) then
-				return false, string.interpolate("module ${name} - healthcheck.action must be one of: restart, none", moduleInfo)
+				return false,
+					string.interpolate("module ${name} - healthcheck.action must be one of: restart, none", moduleInfo)
 			end
 
 			if type(v.healthcheck.interval) ~= "number" then
@@ -163,14 +175,16 @@ local function validate_service_definition(definition)
 				return false, string.interpolate("module ${name} - healthcheck.retries must be a number", moduleInfo)
 			end
 			if v.healthcheck.retries <= 0 then
-				return false, string.interpolate("module ${name} - healthcheck.retries must be greater than 0", moduleInfo)
+				return false,
+					string.interpolate("module ${name} - healthcheck.retries must be greater than 0", moduleInfo)
 			end
 			if type(v.healthcheck.delay) ~= "number" then
 				return false, string.interpolate("module ${name} - healthcheck.delay must be a number", moduleInfo)
 			end
 
 			if v.healthcheck.interval < 1 then
-				return false, string.interpolate("module ${name} - healthcheck.interval must be greater than 0", moduleInfo)
+				return false,
+					string.interpolate("module ${name} - healthcheck.interval must be greater than 0", moduleInfo)
 			end
 		end
 	end
@@ -185,7 +199,7 @@ local serviceDefinitionDefaults = {
 	stop_signal = signal.SIGTERM,
 	depends = {},
 	autostart = true,
-	restart = "always",
+	restart = "on-exit",
 	restart_delay = 1,
 	restart_max_retries = 5,
 	log_rotate = true,
@@ -224,7 +238,7 @@ local function normalize_service_definition(name, definition)
 				user = normalized.user,
 				environment = normalized.environment,
 				healthcheck = normalized.healthcheck,
-				log_file = path.combine(name, "default.log"),
+				log_file = normalized.log_file or path.combine(name, "default.log"),
 				log_rotate = normalized.log_rotate,
 				log_max_size = normalized.log_max_size,
 				log_max_files = normalized.log_max_files

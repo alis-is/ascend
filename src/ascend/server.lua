@@ -61,6 +61,17 @@ local function check_manages_just_managed_services(params)
 	return true
 end
 
+local function alter_params(params)
+	local options = params.options
+	params.options = nil
+	for k, v in pairs(params) do
+		params[tonumber(k)] = v
+		params[k] = nil
+	end
+
+	return params, options
+end
+
 ---@type table<string, fun(request: JsonRpcRequest, respond: fun(response: any, err: JsonRpcError?))>
 local methodHandlers = {
 	stop = function(request, respond)
@@ -148,7 +159,7 @@ local methodHandlers = {
 		end
 		respond(true)
 	end,
-	["ascend-health"] = function (request, respond)
+	["ascend-health"] = function(request, respond)
 		local strict = table.includes(request.params, "strict")
 		respond({ success = true, data = services.get_ascend_health(strict) })
 	end,
@@ -205,10 +216,45 @@ local methodHandlers = {
 		end
 		respond({ success = true, data = result })
 	end,
-	list = function(_, respond)
+	list = function(request, respond)
+		local params, options = alter_params(request.params or {})
+
+		if #params > 1 and not check_params(request.params, check_is_array_of_strings, respond) then
+			return
+		end
+
+		if #params > 1 and not check_params(request.params, check_manages_just_managed_services, respond) then
+			return
+		end
+
 		respond({
 			success = true,
-			data = services.list()
+			data = services.list(params, options.extended)
+		})
+	end,
+	show = function(request, respond)
+		local params = request.params
+
+		if #params > 1 and not check_params(request.params, check_is_array_of_strings, respond) then
+			return
+		end
+
+		if #params > 1 and not check_params(request.params, check_manages_just_managed_services, respond) then
+			return
+		end
+
+		local result, err = services.show(params)
+		if not result then
+			respond(nil, {
+				code = jsonrpc.error_codes.INTERNAL_ERROR,
+				message = err or "unknown error"
+			})
+			return
+		end
+
+		respond({
+			success = true,
+			data = result
 		})
 	end,
 }

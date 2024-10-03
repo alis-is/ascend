@@ -1,0 +1,16 @@
+{
+   modules: {
+      date: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/date.lua
+         ]
+      }
+      ignoreSigterm: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/ignore-sigterm.lua
+         ]
+      }
+   }
+}

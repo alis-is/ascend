@@ -1,0 +1,16 @@
+{
+   modules: {
+      one: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/one-time.lua
+         ]
+      }
+      one2: {
+         executable: ${INTERPRETER}
+         args: [
+            ${ENV_DIR}/assets/scripts/one-time2.lua
+         ]
+      }
+   }
+}

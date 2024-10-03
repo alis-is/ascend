@@ -27,10 +27,10 @@ tasks.add(server.listen())
 tasks.add(services.healthcheck())
 
 log_info("ascend started")
-tasks.run()
+tasks.run({ stopOnError = true })
 
 tasks.clear()
 tasks.add(services.stop_all())
-tasks.run(true)
+tasks.run({ ignoreStop = true, stopOnEmpty = true })
 
 log_info("ascend stopped")

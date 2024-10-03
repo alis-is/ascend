@@ -18,5 +18,6 @@ jobs:
         uses: alis-is/setup-eli@v1
 
       - name: test ami
+        working-directory: tests
         run: |
-          eli ./tests/all.lua
+          eli ./all.lua
