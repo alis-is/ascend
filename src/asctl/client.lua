@@ -11,7 +11,7 @@ local counter = 0
 ---@param parameters any
 ---@returns any?, string?
 function client.execute(cmd, parameters)
-	local ok, socket = ipc.safe_connect(aenv.ipcEndpoint)
+	local ok, socket = ipc.safe_connect(aenv.ipcEndpoint) --[[@as IPCSocket]]
 	if not ok then
 		if type(socket) == "string" and socket:find("failed to connect", 1, true) and cmd == "stop" then
 			log_warn("unable to connect to the server, it may be already stopped")
