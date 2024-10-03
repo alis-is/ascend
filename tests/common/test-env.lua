@@ -55,10 +55,6 @@ local function patch_definition(definition, envPath)
         if key == "working_directory" then
             definition[key] = path.combine(envPath, value)
         end
-
-        definition[key] = string.interpolate(definition[key], {
-            ENV_DIR = envPath
-        })
     end
     return definition
 end
@@ -189,7 +185,6 @@ function AscendTestEnv:new(options)
     })
 
     obj.environment_variables = patch_env(options.environment_variables, obj.vars)
-
     local ok, err = update_env(obj, options)
     if not ok then
         obj.error = err
