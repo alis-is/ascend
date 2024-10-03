@@ -55,8 +55,26 @@ local function patch_definition(definition, envPath)
         if key == "working_directory" then
             definition[key] = path.combine(envPath, value)
         end
+
+        definition[key] = string.interpolate(definition[key], {
+            ENV_DIR = envPath
+        })
     end
     return definition
+end
+
+---@param env AscendTestEnv
+---@param vars table<string, any>
+local function patch_env(env, vars)
+    return table.map(env or {}, function(val)
+        if type(val) == "table" then
+            return patch_env(val, vars)
+        end
+        if type(val) == "string" then
+            return string.interpolate(val, vars)
+        end
+        return val
+    end)
 end
 
 ---@param obj AscendTestEnvBase
@@ -170,7 +188,8 @@ function AscendTestEnv:new(options)
         ENV_DIR = obj.path
     })
 
-    obj.environment_variables = options.environment_variables
+    obj.environment_variables = patch_env(options.environment_variables, obj.vars)
+
     local ok, err = update_env(obj, options)
     if not ok then
         obj.error = err
