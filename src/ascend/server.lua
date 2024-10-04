@@ -302,7 +302,7 @@ function server.listen()
 						return
 					end
 					log_trace("received request id - ${id}: ${method}", { id = request.id, method = request.method })
-					handler(request, function(result, error)
+					local success, err = pcall(handler, request, function(result, error)
 						local response, err = jsonrpc.encode_response(request.id, result, error)
 						if err then
 							log_warn("failed to encode response: ${error}", { error = err })
@@ -312,6 +312,16 @@ function server.listen()
 						local responseLenBytes = encoding.encode_int(responseLen, 4)
 						socket:write(responseLenBytes .. response)
 					end)
+					if not success then
+						log_error("failed to handle request: ${error}", { error = err })
+						local response = jsonrpc.encode_response(request.id, nil, {
+							code = jsonrpc.error_codes.INTERNAL_ERROR,
+							message = "internal error"
+						})
+						local responseLen = #response
+						local responseLenBytes = encoding.encode_int(responseLen, 4)
+						socket:write(responseLenBytes .. response)
+					end
 				end
 			end,
 			disconnected = function(socket)

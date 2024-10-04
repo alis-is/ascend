@@ -114,7 +114,7 @@ function services.reload()
 		local modules = service.modules or {}
 
 		for moduleName, moduleDefinition in pairs(definition.modules) do
-			local module = service.modules[moduleName]
+			local module = modules[moduleName]
 			if not module then
 				modules[moduleName] = new_managed_module(moduleDefinition)
 			else
