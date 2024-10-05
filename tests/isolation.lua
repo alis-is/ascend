@@ -3,8 +3,12 @@ local new_test_env = require "common.test-env"
 
 
 local function exec_command(command)
-    local result = io.popen(command):read("l")
-    io.popen(command):close()
+    local output = io.popen(command)
+    if not output then
+        return nil
+    end
+    local result = output:read("l")
+    output:close()
     return result
 end
 
@@ -45,6 +49,9 @@ test["isolation - user"] = function()
         end
 
         local psOutput = exec_command("ps aux | grep /assets/scripts/date.lua")
+        if not psOutput then
+            return false, "Failed to get process list"
+        end
         local userName = psOutput:match("^(%S+)")
         local whoamiOutput = exec_command("whoami")
 
