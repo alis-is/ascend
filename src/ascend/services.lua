@@ -589,7 +589,6 @@ function services.manage(start)
 							module.process = nil
 							module.stopped = time
 						elseif module.health.state == "unhealthy" and module.definition.healthcheck.action == "restart" then
-							-- // TODO: improve, we should not use services.stop directly here
 							log_debug("${service}:${module} is unhealthy", { service = serviceName, module = moduleName })
 							services.stop(string.interpolate("${service}:${module}",
 								{ service = serviceName, module = moduleName }))
@@ -612,7 +611,8 @@ function services.manage(start)
 						end
 						if shouldStart then
 							log_debug("restarting ${service}:${module}", { service = serviceName, module = moduleName })
-							local ok, err = start_module(module)
+							local ok, err = services.start(string.interpolate("${service}:${module}",
+								{ service = serviceName, module = moduleName }))
 							if not ok then
 								log_error("failed to restart ${service}:${module} - ${error}",
 									{ service = serviceName, error = err })
