@@ -24,6 +24,8 @@ local enter_dir = require "common.working-dir"
 ---@field vars table<string, table<string,string>>?
 ---@field environment_variables table<string, string>?
 
+---@alias T_Test_Func fun(env: AscendTestEnv, ascendOutput: EliReadableStream): boolean, string?
+
 ---@class AscendTestEnv: AscendTestEnvBase
 ---@field private path string
 ---@field private is_open boolean
@@ -37,7 +39,7 @@ local enter_dir = require "common.working-dir"
 ---@field private healthchecks_dir string?
 ---@field private build_env fun(self: AscendTestEnv): table<string, string>
 ---@field update_env fun(self: AscendTestEnv, options: AscendTestEnvOptions): boolean, string
----@field run fun(self: AscendTestEnv, test: fun(env: AscendTestEnv, ascendOutput: EliReadableStream): boolean, string?): AscendTestEnv
+---@field run fun(self: AscendTestEnv, test: T_Test_Func, ascend_args: string[]?): AscendTestEnv
 ---@field result fun(self: AscendTestEnv): boolean, string?
 ---@field get_path fun(self: AscendTestEnv): string
 ---@field get_service_dir fun(self: AscendTestEnv): string
@@ -207,7 +209,7 @@ function AscendTestEnv:build_env(env)
     })
 end
 
-function AscendTestEnv:run(test)
+function AscendTestEnv:run(test, ascend_args)
     if self.error then
         return self
     end
@@ -218,7 +220,8 @@ function AscendTestEnv:run(test)
     end
 
     local srcDir <close> = enter_dir("../src")
-    local ascendProcess, err = proc.spawn(INTERPRETER, { "ascend.lua", "--log-level=trace" }, {
+    local args = util.merge_arrays({ "ascend.lua", "--log-level=trace" }, ascend_args or {})
+    local ascendProcess, err = proc.spawn(INTERPRETER, args, {
         stdio = {
             output = "pipe",
         },

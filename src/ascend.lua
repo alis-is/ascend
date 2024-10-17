@@ -2,6 +2,7 @@
 
 require "common.globals"
 require "common.log" ("ascend")
+local input = require "common.input"
 
 local args = require "common.args"
 
@@ -11,6 +12,11 @@ if args.command == "version" or args.options["version"] then
 end
 
 GLOBAL_LOGGER.options.level = args.options["log-level"] or "info"
+local timeout = input.parse_time_value(args.options["timeout"])
+if not timeout and args.options["timeout"] then
+	log_warn("Invalid timeout value: ${value}", { value = args.options["timeout"] })
+end
+
 
 local init = require "ascend.init"
 local services = require "ascend.services"
@@ -26,8 +32,9 @@ tasks.add(services.manage(true))
 tasks.add(server.listen())
 tasks.add(services.healthcheck())
 
+local end_time = timeout and os.time() + timeout or nil
 log_info("ascend started")
-tasks.run({ stopOnError = true })
+tasks.run({ stopOnError = true , end_time = end_time })
 
 tasks.clear()
 tasks.add(services.stop_all())
