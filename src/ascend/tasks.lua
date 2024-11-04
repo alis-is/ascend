@@ -27,15 +27,25 @@ function tasks.add(task)
 	table.insert(taskQueue, task)
 end
 
+---@alias StopReason "error" | "empty" | "timeout" | "requested"
+
 --- run all tasks in the task queue
 ---@param options TaskPoolOptions
+---@return StopReason
 function tasks.run(options)
 	if not options then
 		options = {}
 	end
 
-	while options.ignoreStop or not is_stop_requested() and not timed_out(options.end_time) do
-		local stop = false
+	while true do
+		if not options.ignoreStop and is_stop_requested() then
+			return "requested"
+		end
+		if timed_out(options.end_time) then
+			return "timeout"
+		end
+
+		local error_occured = false
 
 		local newTaskQueue = {}
 		for _, task in ipairs(taskQueue) do
@@ -46,7 +56,7 @@ function tasks.run(options)
 			if not ok then
 				log_error("!!! task failed !!!", { error = err })
 				if options.stopOnError then
-					stop = true
+					error_occured = true
 					break
 				end
 			end
@@ -55,8 +65,11 @@ function tasks.run(options)
 		end
 
 		taskQueue = newTaskQueue
-		if stop or (options.stopOnEmpty and #taskQueue == 0) then
-			break
+		if error_occured then
+			return "error"
+		end
+		if (options.stopOnEmpty and #taskQueue == 0) then
+			return "empty"
 		end
 		os.sleep(100, 1000)
 	end

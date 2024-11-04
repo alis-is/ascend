@@ -34,10 +34,18 @@ tasks.add(services.healthcheck())
 
 local end_time = timeout and os.time() + timeout or nil
 log_info("ascend started")
-tasks.run({ stopOnError = true , end_time = end_time })
+local stop_reason = tasks.run({ stopOnError = true , end_time = end_time })
 
 tasks.clear()
 tasks.add(services.stop_all())
 tasks.run({ ignoreStop = true, stopOnEmpty = true })
 
 log_info("ascend stopped")
+
+if stop_reason == "error" then
+	os.exit(1)
+end
+
+if stop_reason == "timeout" then
+	os.exit(2)
+end
