@@ -1,0 +1,6 @@
+{
+   executable: eli
+   args: [
+      ../tests/assets/scripts/date.lua
+   ]
+}
