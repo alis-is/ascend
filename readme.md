@@ -22,17 +22,7 @@ wget https://raw.githubusercontent.com/alis-is/ascend/main/tools/setup/standalon
 This command downloads and executes the installation script for `ascend`, `asctl` and `eli` and setup the path for them.
 If needed please use `sudo`
 
-#### 2. Clone the Ascend Repository:
-
-```bash
-git clone https://github.com/alis-is/ascend.git
-```
-#### 3. Navigate to the Ascend Src Directory:
-
-```bash
-cd ascend/src
-```
-Configuration
+#### 2. Configuration
 Ascend utilizes environment variables for its configuration. You can override the default settings by setting the following environment variables:
 
 * `ASCEND_SERVICES`: Path to the services directory.
@@ -106,10 +96,24 @@ _Note: Ensure you have the necessary permissions to execute scripts and manage s
 
 #### Sample run
 
-```sh
-cd src
+#### 1. Clone the Ascend Repository:
+
+```bash
+git clone https://github.com/alis-is/ascend.git
+```
+#### 2. Navigate to the Ascend source directory and setup env variables:
+
+```bash
+cd ascend/src
 export ASCEND_SERVICES=../tests/assets/services/1
 export ASCEND_LOGS=../logs
+```
+
+#### 3. Start ascend with trace log-level:
+```bash
 ascend --log-level=trace
 ```
+
+#### 4. Ascend control commands:
+
 In another terminal u can run the `asctl` commands to check the running service.
