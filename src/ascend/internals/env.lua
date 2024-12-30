@@ -315,7 +315,7 @@ function aenv.load_service_definitions()
 		return nil, string.interpolate("path ${path} is not a directory", { path = aenv.servicesDirectory })
 	end
 
-	local defs = fs.read_dir(aenv.servicesDirectory, { recurse = false, returnFullPaths = true, asDirEntries = false }) --[=[@as string[]]=]
+	local defs = fs.read_dir(aenv.servicesDirectory, { recurse = false, return_full_paths = true, as_dir_entries = false }) --[=[@as string[]]=]
 
 	---@type table<string, { definition: table, source: string }>
 	local services = {}

@@ -20,7 +20,7 @@ local function ami_init()
 
 	fs.copy(initDir, appsDir, { overwrite = false })
 
-	local paths = fs.read_dir(appsDir, { returnFullPaths = true })
+	local paths = fs.read_dir(appsDir, { return_full_paths = true })
 	for _, path in ipairs(paths) do
 		if type(path) == "string" and fs.file_type(path) == "directory" then
 			local isInstalled = os.execute(string.interpolate("ami --path=${path} --is-app-installed ${redirect}", { path = path, redirect = SILENT_REDIRECT }))

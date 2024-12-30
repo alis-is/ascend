@@ -129,6 +129,7 @@ test["health checks - timeout"] = function()
 
         while true do
             local line = ascendOutput:read("l", 1)
+            print(line)
             if line and line:match("healthcheck for date:default timed out") then
                 break
             end
