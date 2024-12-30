@@ -236,7 +236,7 @@ local function start_module(module, options)
 				stdin = "ignore",
 				output = output,
 			},
-			createProcessGroup = true,
+			create_process_group = true,
 			username = module.definition.user
 		}) --[[@as EliProcess]]
 	if needsDirChange then
