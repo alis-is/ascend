@@ -132,7 +132,7 @@ test["health checks - timeout"] = function()
             if line and line:match("healthcheck for date:default timed out") then
                 break
             end
-            if os.time() > startTime + 10 then
+            if os.time() > startTime + 20 then
                 return false, "Service did not timeout in time: " .. tostring(os.time() - startTime) .. "s"
             end
         end

@@ -99,7 +99,7 @@ local function update_env(obj, options)
 
         local definition = util.merge_tables(base, serviceDefinition.definition, {
             overwrite = true,
-            arrayMergeStrategy = "prefer-t2",
+            array_merge_strategy = "prefer-t2",
         })
         local encodedDefinition = hjson.encode(patch_definition(definition, obj.path))
         encodedDefinition = string.interpolate(encodedDefinition, obj.vars)

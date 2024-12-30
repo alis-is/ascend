@@ -268,7 +268,7 @@ local function normalize_service_definition(name, definition)
 			log_rotate = module.log_rotate or normalized.log_rotate,
 			log_max_size = module.log_max_size or normalized.log_max_size,
 			log_max_files = module.log_max_files or normalized.log_max_files
-		}, { overwrite = true, arrayMergeStrategy = "prefer-t1" })
+		}, { overwrite = true, array_merge_strategy = "prefer-t1" })
 
 		module = util.merge_tables(module, serviceDefinitionDefaults)
 		if type(module.healthcheck) == "table" then
@@ -277,7 +277,6 @@ local function normalize_service_definition(name, definition)
 
 		normalized.modules[id] = module
 	end
-
 
 	return {
 		modules = normalized.modules
