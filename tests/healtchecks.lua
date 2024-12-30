@@ -127,12 +127,15 @@ test["health checks - timeout"] = function()
             return false, "Healthcheck setting is not updated correctly"
         end
 
+        local ascend_output = ""
         while true do
             local line = ascendOutput:read("l", 1)
+            ascend_output = ascend_output .. line .. "\n"
             if line and line:match("healthcheck for date:default timed out") then
                 break
             end
             if os.time() > startTime + 20 then
+                print(ascend_output)
                 return false, "Service did not timeout in time: " .. tostring(os.time() - startTime) .. "s"
             end
         end
