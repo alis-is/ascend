@@ -15,11 +15,11 @@ function asctl.exec(...)
     if not proc then
         error("Failed to execute asctl command: " .. cmd)
     end
-    trace("asctl exit code: " .. proc.exitcode)
+    trace("asctl exit code: " .. proc.exit_code)
 
     local stderr = proc.stderrStream:read("a")
     local stdout = proc.stdoutStream:read("a")
-    return proc.exitcode, stdout, stderr
+    return proc.exit_code, stdout, stderr
 end
 
 function asctl.with_options(options)
@@ -46,8 +46,8 @@ function asctl.install_service(sourceFile, serviceName, options)
     }))
 
     if type(options.reload) ~= "boolean" or options.reload == true then
-        local _exitcode, _stdout, _stderr = asctl.exec("reload")
-        if _exitcode ~= 0 then
+        local _exit_code, _stdout, _stderr = asctl.exec("reload")
+        if _exit_code ~= 0 then
             warn({ msg = "Failed to reload ascend daemon!", stdout = _stdout, stderr = _stderr })
         end
     end
@@ -55,15 +55,15 @@ end
 
 function asctl.start_service(serviceName)
     trace("Starting service: ${service}", { service = serviceName })
-    local exitcode = asctl.exec("start", serviceName)
-    assert(exitcode == 0, "Failed to start service")
+    local exit_code = asctl.exec("start", serviceName)
+    assert(exit_code == 0, "Failed to start service")
     trace("Service ${service} started.", { service = serviceName })
 end
 
 function asctl.stop_service(serviceName)
     trace("Stoping service: ${service}", { service = serviceName })
-    local exitcode = asctl.exec("stop", serviceName)
-    assert(exitcode == 0, "Failed to stop service")
+    local exit_code = asctl.exec("stop", serviceName)
+    assert(exit_code == 0, "Failed to stop service")
     trace("Service ${service} stopped.", { service = serviceName })
 end
 
@@ -78,8 +78,8 @@ function asctl.remove_service(serviceName, options)
     if not fs.exists(serviceUnitFile) then return end -- service not found so skip
 
     trace("Removing service: ${service}", { service = serviceName })
-    local exitcode = asctl.exec("stop", serviceName)
-    assert(exitcode == 0, "Failed to stop service")
+    local exit_code = asctl.exec("stop", serviceName)
+    assert(exit_code == 0, "Failed to stop service")
     trace("Service ${service} stopped.", { service = serviceName })
 
     trace("Removing service...")
@@ -93,8 +93,8 @@ function asctl.remove_service(serviceName, options)
     end
 
     if type(options.reload) ~= "boolean" or options.reload == true then
-        local exitcode, stdout, stderr = asctl.exec("reload")
-        if exitcode ~= 0 then
+        local exit_code, stdout, stderr = asctl.exec("reload")
+        if exit_code ~= 0 then
             warn({ msg = "Failed to reload ascend!", stdout = stdout, stderr = stderr })
         end
     end
@@ -103,8 +103,8 @@ end
 
 function asctl.get_service_status(serviceName)
     trace("Getting service " .. serviceName .. "status...")
-    local exitcode, stdout = asctl.exec("status", serviceName)
-    assert(exitcode == 0, "Failed to get service status")
+    local exit_code, stdout = asctl.exec("status", serviceName)
+    assert(exit_code == 0, "Failed to get service status")
     local response = hjson.parse(stdout) --[[@as table<string, { ok: boolean, status: table<string, AscendManagedServiceModuleStatus> }>]]
     local serviceStatus = response[serviceName].status
     local moduleStatus = serviceStatus.default

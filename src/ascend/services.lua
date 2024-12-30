@@ -675,15 +675,15 @@ local function run_healthcheck(serviceName, moduleName, health, healthcheckDefin
 				break
 			end
 
-			local exitcode = proc --[[@as EliProcess]]:wait(1, 1000)
-			if exitcode < 0 then -- in progress
+			local exit_code = proc --[[@as EliProcess]]:wait(1, 1000)
+			if exit_code < 0 then -- in progress
 				coroutine.yield()
 				goto CONTINUE
-			elseif exitcode == 0 then
+			elseif exit_code == 0 then
 				health.state = "healthy"
 			elseif health.unhealthyCheckCount + 1 >= healthcheckDefinition.retries then
 				log_info("healthcheck for ${service}:${module} failed with exit code ${code}",
-					{ service = serviceName, module = moduleName, code = exitcode })
+					{ service = serviceName, module = moduleName, code = exit_code })
 				health.state = "unhealthy"
 			else
 				health.unhealthyCheckCount = health.unhealthyCheckCount + 1

@@ -133,7 +133,7 @@ test["health checks - timeout"] = function()
                 break
             end
             if os.time() > startTime + 10 then
-                return false, "Service did not timeout in time"
+                return false, "Service did not timeout in time: " .. tostring(os.time() - startTime) .. "s"
             end
         end
 
