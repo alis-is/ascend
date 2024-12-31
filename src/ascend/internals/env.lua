@@ -4,7 +4,7 @@ local input = require "common.input"
 local isUnix = package.config:sub(1, 1) == "/"
 
 local defaultAEnv = {
-	servicesDirectory = isUnix and "/etc/ascend/services" or "C:\\ascend\\services",
+	services_directory = isUnix and "/etc/ascend/services" or "C:\\ascend\\services",
 	healthchecksDirectory = isUnix and "/etc/ascend/healthchecks" or "C:\\ascend\\healthchecks",
 	ipcEndpoint = "/tmp/ascend.sock",
 	logDirectory = isUnix and "/var/log/ascend" or "C:\\ascend\\logs",
@@ -12,7 +12,7 @@ local defaultAEnv = {
 }
 
 local aenv = util.merge_tables({
-	servicesDirectory = args.options.services or env.get_env("ASCEND_SERVICES"),
+	services_directory = args.options.services or env.get_env("ASCEND_SERVICES"),
 	healthchecksDirectory = args.options.healthchecks or env.get_env("ASCEND_HEALTHCHECKS"),
 	ipcEndpoint = args.options.socket or env.get_env("ASCEND_SOCKET"),
 	logDirectory = args.options["log-dir"] or env.get_env("ASCEND_LOGS"),
@@ -68,123 +68,141 @@ local function validate_service_definition(definition)
 		if k == "all" then
 			return false, "module name 'all' is reserved"
 		end
-		local moduleInfo = { name = k }
+		local module_info = { name = k }
 		if type(v) ~= "table" then
-			return false, string.interpolate("module ${name} must be an JSON object", moduleInfo)
+			local msg = string.interpolate("module ${name} must be an JSON object", module_info)
+			return false, msg
 		end
 
 		if type(v.executable) ~= "string" then
-			return false, string.interpolate("module ${name} - executable must be a string", moduleInfo)
+			local msg = string.interpolate("module ${name} - executable must be a string", module_info)
+			return false, msg
 		end
 
 		if type(v.args) ~= "table" then
-			return false, string.interpolate("module ${name} - args must be an array", moduleInfo)
+			local msg = string.interpolate("module ${name} - args must be an array", module_info)
+			return false, msg
 		end
 
 		if not table.is_array(v.depends) then
-			return false, string.interpolate("module ${name} - depends must be an array", moduleInfo)
+			local msg = string.interpolate("module ${name} - depends must be an array", module_info)
+			return false, msg
 		end
 
 		if type(v.restart) ~= "string" then
-			return false, string.interpolate("module ${name} - restart must be a string", moduleInfo)
+			local msg = string.interpolate("module ${name} - restart must be a string", module_info)
+			return false, msg
 		end
 
 		if not table.includes({ "always", "never", "on-failure", "on-success", "on-exit" }, v.restart) then
-			return false,
-				string.interpolate("module ${name} - restart must be one of: always, never, on-failure, on-success",
-					moduleInfo)
+			local msg = string.interpolate("module ${name} - restart must be one of: always, never, on-failure, on-success", module_info)
+			return false, msg
 		end
 
 		if type(v.restart_delay) ~= "number" then
-			return false, string.interpolate("module ${name} - restart_delay must be a number", moduleInfo)
+			local msg = string.interpolate("module ${name} - restart_delay must be a number", module_info)
+			return false, msg
 		end
 
 		if type(v.restart_max_retries) ~= "number" then
-			return false, string.interpolate("module ${name} - restart_max_retries must be a number", moduleInfo)
+			local msg = string.interpolate("module ${name} - restart_max_retries must be a number", module_info)
+			return false, msg
 		end
 
 		if v.stop_timeout and type(v.stop_timeout) ~= "number" then
-			return false, string.interpolate("module ${name} - stop_timeout must be a number or undefined", moduleInfo)
+			local msg = string.interpolate("module ${name} - stop_timeout must be a number or undefined", module_info)
+			return false, msg
 		end
 
 		if type(v.stop_signal) ~= "number" then
-			return false, string.interpolate("module ${name} - stop_signal must be a number", moduleInfo)
+			local msg = string.interpolate("module ${name} - stop_signal must be a number", module_info)
+			return false, msg
 		end
 
 		if type(v.environment) ~= "table" then
-			return false, string.interpolate("module ${name} - environment must be an JSON object", moduleInfo)
+			local msg = string.interpolate("module ${name} - environment must be an JSON object", module_info)
+			return false, msg
 		end
 
 		if type(v.working_directory) ~= "string" and type(v.working_directory) ~= "nil" then
-			return false,
-				string.interpolate("module ${name} - working_directory must be a string or undefined", moduleInfo)
+			local msg = string.interpolate("module ${name} - working_directory must be a string or undefined", module_info)
+			return false, msg
 		end
 
 		if type(v.working_directory) == "string" and #v.working_directory == 0 then
-			return false, string.interpolate("module ${name} - working_directory must not be empty", moduleInfo)
+			local msg = string.interpolate("module ${name} - working_directory must not be empty", module_info)
+			return false, msg
 		end
 
 		if type(v.log_file) == "string" and path.isabs(v.log_file) then
 			local dir = path.dir(v.log_file)
 			if not fs.exists(dir) then
-				return false,
-					string.interpolate("module ${name} - log_file directory ${dir} does not exist",
-						{ name = k, dir = dir })
+				local msg = string.interpolate("module ${name} - log_file directory ${dir} does not exist",
+					{ name = k, dir = dir })
+				return false, msg
 			end
 		end
 
 		if type(v.log_rotate) ~= "boolean" then
-			return false, string.interpolate("module ${name} - log_rotate must be a boolean", moduleInfo)
+			local msg = string.interpolate("module ${name} - log_rotate must be a boolean", module_info)
+			return false, msg
 		end
 
 		if type(v.log_max_files) ~= "number" then
-			return false, string.interpolate("module ${name} - log_max_files must be a number", moduleInfo)
+			local msg = string.interpolate("module ${name} - log_max_files must be a number", module_info)
+			return false, msg
 		elseif v.log_max_files < 0 then
-			return false, string.interpolate("module ${name} - log_max_files must be greater than 0", moduleInfo)
+			local msg = string.interpolate("module ${name} - log_max_files must be greater than 0", module_info)
+			return false, msg
 		end
 
 		local max_log_file_size = input.parse_size_value(tostring(v.log_max_size))
 		if type(max_log_file_size) ~= "number" then
-			return false,
-				string.interpolate("module ${name} - log_max_size must be a number (accepts k, m, g suffixes)",
-					moduleInfo)
+			local msg = string.interpolate("module ${name} - log_max_size must be a number (accepts k, m, g suffixes)",
+				module_info)
+			return false, msg
 		elseif max_log_file_size < 1024 then
-			return false,
-				string.interpolate("module ${name} - log_max_size must be greater than 1KB", moduleInfo)
+			local msg = string.interpolate("module ${name} - log_max_size must be greater than 1KB", module_info)
+			return false, msg
 		end
 
 		if type(v.healthcheck) == "table" then -- healthchecks are optional so validate only if defined
 			if type(v.healthcheck.name) ~= "string" then
-				return false, string.interpolate("module ${name} - healthcheck.name must be a string", moduleInfo)
+				local msg = string.interpolate("module ${name} - healthcheck.name must be a string", module_info)
+				return false, msg
 			end
 
 			if type(v.healthcheck.action) == "string" and not table.includes({ "restart", "none" }, v.healthcheck.action) then
-				return false,
-					string.interpolate("module ${name} - healthcheck.action must be one of: restart, none", moduleInfo)
+				local msg = string.interpolate("module ${name} - healthcheck.action must be one of: restart, none", module_info)
+				return false, msg
 			end
 
 			if type(v.healthcheck.interval) ~= "number" then
-				return false, string.interpolate("module ${name} - healthcheck.interval must be a number", moduleInfo)
+				local msg = string.interpolate("module ${name} - healthcheck.interval must be a number", module_info)
+				return false, msg
 			end
 
 			if type(v.healthcheck.timeout) ~= "number" then
-				return false, string.interpolate("module ${name} - healthcheck.timeout must be a number", moduleInfo)
+				local msg = string.interpolate("module ${name} - healthcheck.timeout must be a number", module_info)
+				return false, msg
 			end
 
 			if type(v.healthcheck.retries) ~= "number" then
-				return false, string.interpolate("module ${name} - healthcheck.retries must be a number", moduleInfo)
+				local msg = string.interpolate("module ${name} - healthcheck.retries must be a number", module_info)
+				return false, msg
 			end
 			if v.healthcheck.retries <= 0 then
-				return false,
-					string.interpolate("module ${name} - healthcheck.retries must be greater than 0", moduleInfo)
+				local msg = string.interpolate("module ${name} - healthcheck.retries must be greater than 0", module_info)
+				return false, msg
 			end
 			if type(v.healthcheck.delay) ~= "number" then
-				return false, string.interpolate("module ${name} - healthcheck.delay must be a number", moduleInfo)
+				local msg = string.interpolate("module ${name} - healthcheck.delay must be a number", module_info)
+				return false, msg
 			end
 
 			if v.healthcheck.interval < 1 then
-				return false,
-					string.interpolate("module ${name} - healthcheck.interval must be greater than 0", moduleInfo)
+				local msg = string.interpolate("module ${name} - healthcheck.interval must be greater than 0", module_info)
+				return false, msg
 			end
 		end
 	end
@@ -311,11 +329,12 @@ end
 
 ---@return table<string, AscendServiceDefinition>?, string?
 function aenv.load_service_definitions()
-	if fs.file_type(aenv.servicesDirectory) ~= "directory" then
-		return nil, string.interpolate("path ${path} is not a directory", { path = aenv.servicesDirectory })
+	if fs.file_type(aenv.services_directory) ~= "directory" then
+		local msg = string.interpolate("path ${path} is not a directory", { path = aenv.services_directory })
+		return nil, msg
 	end
 
-	local defs = fs.read_dir(aenv.servicesDirectory, { recurse = false, return_full_paths = true, as_dir_entries = false }) --[=[@as string[]]=]
+	local defs = fs.read_dir(aenv.services_directory, { recurse = false, return_full_paths = true, as_dir_entries = false }) --[=[@as string[]]=]
 
 	---@type table<string, { definition: table, source: string }>
 	local services = {}

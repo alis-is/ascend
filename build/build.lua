@@ -27,7 +27,7 @@ end
 local function minify(filePath)
 	if not fs.exists("../build/luasrcdiet") then
 		net.download_file("https://github.com/cryi/luasrcdiet/archive/refs/tags/1.1.1.zip", "../build/luasrcdiet.zip",
-			{ followRedirects = true })
+			{ follow_redirects = true })
 		fs.mkdirp("../build/luasrcdiet")
 		zip.extract("../build/luasrcdiet.zip", "../build/luasrcdiet", { flatten_root_dir = true })
 	end
@@ -83,12 +83,12 @@ fs.mkdirp("../bin/ami/")
 local amiAsctlEntrypoint = "ami-plugin/asctl.lua"
 local amiAsctlOutput = "../bin/ami/asctl.lua"
 amalg("-o", amiAsctlOutput, "-s", amiAsctlEntrypoint, table.unpack(collect_requires(amiAsctlEntrypoint)))
-local fileName = string.interpolate("${pluginName}-${version}.zip", { pluginName = "asctl", version = require"version-info".VERSION })
+local fileName = string.interpolate("${plugin_name}-${version}.zip", { plugin_name = "asctl", version = require"version-info".VERSION })
 zip.compress("../bin/ami", path.combine("../bin", fileName), { recurse = true, content_only = true, overwrite = true })
 
 -- minify
 -- if not fs.exists("../build/luasrcdiet") then
--- 	net.download_file("https://github.com/cryi/luasrcdiet/archive/refs/tags/1.1.1.zip", "../build/luasrcdiet.zip", { followRedirects = true })
+-- 	net.download_file("https://github.com/cryi/luasrcdiet/archive/refs/tags/1.1.1.zip", "../build/luasrcdiet.zip", { follow_redirects = true })
 -- 	fs.mkdirp("../build/luasrcdiet")
 -- 	zip.extract("../build/luasrcdiet.zip", "../build/luasrcdiet", { flatten_root_dir = true })
 -- end

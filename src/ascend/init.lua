@@ -9,7 +9,7 @@ local init = {}
 local function ami_init()
 	local appsDir = os.getenv("ASCEND_APPS")
 	if not appsDir then
-		appsDir = path.combine(path.dir(aenv.servicesDirectory), "apps")
+		appsDir = path.combine(path.dir(aenv.services_directory), "apps")
 	end
 	fs.mkdirp(appsDir)
 
@@ -43,7 +43,7 @@ local commonInitStrategies = {
 
 local function run_init_hook()
 	fs.mkdirp(aenv.logDirectory)
-	fs.mkdirp(aenv.servicesDirectory)
+	fs.mkdirp(aenv.services_directory)
 	fs.mkdirp(aenv.healthchecksDirectory)
 
 	if aenv.initScript ~= nil then

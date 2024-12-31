@@ -69,7 +69,8 @@ local function patch_env(env, vars)
             return patch_env(val, vars)
         end
         if type(val) == "string" then
-            return string.interpolate(val, vars)
+            local msg = string.interpolate(val, vars)
+            return msg
         end
         return val
     end)

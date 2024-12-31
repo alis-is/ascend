@@ -9,7 +9,7 @@ local tasks = require "ascend.tasks"
 local server = {}
 
 ---@class ClientMessageBuffer
----@field msgLen number
+---@field msg_length number
 ---@field msg string
 
 ---@type table<IPCSocket, ClientMessageBuffer>
@@ -83,19 +83,19 @@ local methodHandlers = {
 			return
 		end
 		tasks.add(coroutine.create(function()
-			local responseData = {}
+			local response_data = {}
 			local success = true
 			---@type thread[]
 			local stopJobs = jobs.create_queue(jobs.array_to_array_of_params(request.params), function(name)
 				local ok, err = services.stop(name, true)
 				success = success and ok
-				responseData[name] = {
+				response_data[name] = {
 					ok = ok,
 					error = err
 				}
 			end)
 			jobs.run_queue(stopJobs)
-			respond({ success = success, data = responseData })
+			respond({ success = success, data = response_data })
 		end))
 	end,
 	start = function(request, respond)
@@ -108,19 +108,19 @@ local methodHandlers = {
 		end
 
 		tasks.add(coroutine.create(function()
-			local responseData = {}
+			local response_data = {}
 			local success = true
 			---@type thread[]
 			local startJobs = jobs.create_queue(jobs.array_to_array_of_params(request.params), function(name)
 				local ok, err = services.start(name, { manual = true })
 				success = success and ok
-				responseData[name] = {
+				response_data[name] = {
 					ok = ok,
 					error = err
 				}
 			end)
 			jobs.run_queue(startJobs)
-			respond({ success = success, data = responseData })
+			respond({ success = success, data = response_data })
 		end))
 	end,
 	restart = function(request, respond)
@@ -133,19 +133,19 @@ local methodHandlers = {
 		end
 
 		tasks.add(coroutine.create(function()
-			local responseData = {}
+			local response_data = {}
 			local success = true
 			---@type thread[]
 			local restartJobs = jobs.create_queue(jobs.array_to_array_of_params(request.params), function(name)
 				local ok, err = services.restart(name, { manual = true })
 				success = success and ok
-				responseData[name] = {
+				response_data[name] = {
 					ok = ok,
 					error = err
 				}
 			end)
 			jobs.run_queue(restartJobs)
-			respond({ success = success, data = responseData })
+			respond({ success = success, data = response_data })
 		end))
 	end,
 	reload = function(request, respond)
@@ -173,27 +173,27 @@ local methodHandlers = {
 		end
 
 		tasks.add(coroutine.create(function()
-			local responseData = {}
+			local response_data = {}
 			local success = true
 			---@type thread[]
 			local statusJobs = jobs.create_queue(jobs.array_to_array_of_params(request.params), function(name)
 				local status, err = services.status(name)
 				success = success and status ~= nil
 				if not status then
-					responseData[name] = {
+					response_data[name] = {
 						ok = false,
 						error = err
 					}
 					return
 				else
-					responseData[name] = {
+					response_data[name] = {
 						ok = true,
 						status = status
 					}
 				end
 			end)
 			jobs.run_queue(statusJobs)
-			respond({ success = success, data = responseData })
+			respond({ success = success, data = response_data })
 		end))
 	end,
 	logs = function(request, respond)
@@ -263,22 +263,22 @@ function server.listen()
 	return coroutine.create(function()
 		local server, err = ipc.listen(aenv.ipcEndpoint, {
 			accept = function(socket)
-				clients[socket] = { msgLen = 0, msg = "" }
+				clients[socket] = { msg_length = 0, msg = "" }
 			end,
 			data = function(socket, msg)
 				local incomingLen = #msg
 				if incomingLen == 0 then return end
 				local clientBuffer = clients[socket]
-				if clientBuffer.msgLen == 0 then
+				if clientBuffer.msg_length == 0 then
 					-- take first 4 bytes as length
 					local len = encoding.decode_int(msg:sub(1, 4))
-					clientBuffer.msgLen = len
+					clientBuffer.msg_length = len
 					clientBuffer.msg = msg:sub(5)
 				end
 
-				if clientBuffer.msgLen > 0 and clientBuffer.msgLen == #clientBuffer.msg then
+				if clientBuffer.msg_length > 0 and clientBuffer.msg_length == #clientBuffer.msg then
 					local request, err = jsonrpc.parse_request(clientBuffer.msg)
-					clientBuffer.msgLen = 0
+					clientBuffer.msg_length = 0
 					clientBuffer.msg = ""
 					if err or request == nil then
 						log_warn("failed to parse request: ${error}", { error = err or "unknown" })

@@ -1,9 +1,9 @@
 local is_stop_requested = require "ascend.signal"
 
 ---@class TaskPoolOptions
----@field stopOnEmpty boolean?
----@field stopOnError boolean?
----@field ignoreStop boolean?
+---@field stop_on_empty boolean?
+---@field stop_on_error boolean?
+---@field ignore_stop boolean?
 ---@field end_time number?
 
 local taskQueue = {}
@@ -38,7 +38,7 @@ function tasks.run(options)
 	end
 
 	while true do
-		if not options.ignoreStop and is_stop_requested() then
+		if not options.ignore_stop and is_stop_requested() then
 			return "requested"
 		end
 		if timed_out(options.end_time) then
@@ -55,7 +55,7 @@ function tasks.run(options)
 			local ok, err = coroutine.resume(task)
 			if not ok then
 				log_error("!!! task failed !!!", { error = err })
-				if options.stopOnError then
+				if options.stop_on_error then
 					error_occured = true
 					break
 				end
@@ -68,7 +68,7 @@ function tasks.run(options)
 		if error_occured then
 			return "error"
 		end
-		if (options.stopOnEmpty and #taskQueue == 0) then
+		if (options.stop_on_empty and #taskQueue == 0) then
 			return "empty"
 		end
 		os.sleep(100, 1000)
