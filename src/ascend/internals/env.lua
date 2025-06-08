@@ -305,20 +305,20 @@ end
 ---@param filename string
 ---@return AscendServiceDefinition?, string?
 local function load_service_definition(name, filename)
-	local ok, def = fs.safe_read_file(filename)
-	if not ok then
-		return nil, def
+	local def, err = fs.read_file(filename)
+	if not def then
+		return nil, err
 	end
-	local ok, serviceDef = hjson.safe_parse(def)
-	if not ok then
-		return nil, string.join_strings(" - ", "failed to decode service definition", serviceDef)
+	local service_def, err = hjson.parse(def)
+	if not service_def then
+		return nil, string.join_strings(" - ", "failed to decode service definition", err)
 	end
 
-	if type(serviceDef) ~= "table" and not table.is_array(serviceDef) then
+	if type(service_def) ~= "table" and not table.is_array(service_def) then
 		return nil, "service definition must be an JSON object"
 	end
 
-	local completeServiceDef = normalize_service_definition(name, serviceDef)
+	local completeServiceDef = normalize_service_definition(name, service_def)
 	local ok, err = validate_service_definition(completeServiceDef)
 	if not ok then
 		return nil, string.join_strings(" - ", "failed to validate service definition", err)

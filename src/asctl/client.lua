@@ -11,13 +11,13 @@ local counter = 0
 ---@param parameters any
 ---@returns any?, string?
 function client.execute(cmd, parameters)
-	local ok, socket = ipc.safe_connect(aenv.ipcEndpoint) --[[@as IPCSocket]]
-	if not ok then
-		if type(socket) == "string" and socket:find("failed to connect", 1, true) and cmd == "stop" then
+	local socket, err = ipc.connect(aenv.ipcEndpoint) --[[@as IPCSocket]]
+	if not socket then
+		if type(socket) == "string" and err:find("failed to connect", 1, true) and cmd == "stop" then
 			log_warn("unable to connect to the server, it may be already stopped")
 			os.exit(0)
 		end
-		return nil, string.interpolate("failed to connect to the server: ${error}", { error = socket })
+		return nil, string.interpolate("failed to connect to the server: ${error}", { error = err })
 	end
 	counter = counter + 1
 	local request, err = jsonrpc.encode_request(tostring(counter), cmd, parameters)

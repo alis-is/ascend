@@ -6,8 +6,8 @@ local OUTPUT_DIR = "./bin"
 
 local function collect_requires(entrypoint)
 	local requires = {}
-	local ok, content = fs.safe_read_file(entrypoint)
-	if not ok then
+	local content, _ = fs.read_file(entrypoint)
+	if not content then
 		return requires
 	end
 	for require in content:gmatch("require%s*%(?%s*['\"](.-)['\"]%s*%)?") do

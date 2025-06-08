@@ -26,9 +26,9 @@ local jsonrpc = {}
 ---@param msg string
 ---@return JsonRpcRequest?, string?
 function jsonrpc.parse_request(msg)
-	local ok, result = hjson.safe_parse(msg)
-	if not ok then
-		return nil, string.join_strings(" - ", "failed to decode request", result)
+	local result, err = hjson.parse(msg)
+	if not result then
+		return nil, string.join_strings(" - ", "failed to decode request", err)
 	end
 	if type(result) ~= "table" then
 		return nil, "request must be an object"
@@ -49,9 +49,9 @@ end
 ---@param msg string
 ---@return JsonRpcResponse?, string?
 function jsonrpc.parse_response(msg)
-	local ok, result = hjson.safe_parse(msg)
-	if not ok then
-		return nil, string.join_strings(" - ", "failed to decode response", result)
+	local result, err = hjson.parse(msg)
+	if not result then
+		return nil, string.join_strings(" - ", "failed to decode response", err)
 	end
 	if type(result) ~= "table" then
 		return nil, "response must be an object"
@@ -86,9 +86,9 @@ end
 ---@param msg string
 ---@return JsonRpcNotification?, string?
 function jsonrpc.parse_notification(msg)
-	local ok, result = hjson.safe_parse(msg)
-	if not ok then
-		return nil, string.join_strings(" - ", "failed to decode notification", result)
+	local result, err = hjson.parse(msg)
+	if not result then
+		return nil, string.join_strings(" - ", "failed to decode notification", err)
 	end
 	if type(result) ~= "table" then
 		return nil, "notification must be an object"

@@ -229,7 +229,7 @@ local function start_module(module, options)
 	end
 
 	local output = module.definition.log_file == "none" and "inherit" or "pipe"
-	local ok, process = proc.safe_spawn(module.definition.executable, module.definition.args,
+	local process, err = proc.spawn(module.definition.executable, module.definition.args,
 		{
 			env = module.definition.environment,
 			wait = false,
@@ -243,8 +243,8 @@ local function start_module(module, options)
 	if needsDirChange then
 		os.chdir(currentWorkingDir --[[@as string]])
 	end
-	if not ok then
-		return false, process --[[@as string]]
+	if not process then
+		return false, err --[[@as string]]
 	end
 
 	module.process = process
@@ -659,11 +659,11 @@ local function run_healthcheck(service_name, module_name, health, healthcheck_de
 
 		log_trace("running healthcheck ${name} for ${service}:${module}",
 			{ name = healthcheck_definition.name, service = service_name, module = module_name })
-		local ok, proc = proc.safe_spawn(path.combine(aenv.healthchecksDirectory, healthcheck_definition.name),
+		local proc, err = proc.spawn(path.combine(aenv.healthchecksDirectory, healthcheck_definition.name),
 			{ stdio = "inherit" })
-		if not ok then
+		if not proc then
 			log_error("failed to run healthcheck for ${service}:${module} - ${error}",
-				{ service = service_name, module = module_name, error = proc })
+				{ service = service_name, module = module_name, error = err })
 			health.state = "unhealthy"
 			health.lastChecked = os.time()
 			health.isCheckInProgress = false

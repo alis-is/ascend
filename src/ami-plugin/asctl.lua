@@ -38,11 +38,11 @@ function asctl.install_service(sourceFile, serviceName, options)
         service_directory = ASCEND_SERVICES,
         service = serviceName
     })
-    local _ok, _error = fs.safe_copy_file(sourceFile, serviceUnitFile)
-    assert(_ok, string.interpolate("Failed to install ${service} (${file}): ${error}", {
+    local ok, err = fs.copy_file(sourceFile, serviceUnitFile)
+    assert(ok, string.interpolate("Failed to install ${service} (${file}): ${error}", {
         service = serviceName,
         file = serviceUnitFile,
-        error = _error
+        error = err
     }))
 
     if type(options.reload) ~= "boolean" or options.reload == true then
@@ -83,12 +83,12 @@ function asctl.remove_service(service_name, options)
     trace("Service ${service} stopped.", { service = service_name })
 
     trace("Removing service...")
-    local ok, error = fs.safe_remove(serviceUnitFile)
+    local ok, err = fs.remove(serviceUnitFile)
     if not ok then
         error(string.interpolate("Failed to remove ${service} (${file}): ${error}", {
             service = service_name,
             file = serviceUnitFile,
-            error = error
+            error = err
         }))
     end
 
@@ -116,4 +116,4 @@ function asctl.get_service_status(serviceName)
     return status, started
 end
 
-return util.generate_safe_functions(asctl)
+return asctl

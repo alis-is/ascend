@@ -116,8 +116,8 @@ local function update_env(obj, options)
         assetDestination = path.combine(obj.assets_dir, assetDestination)
         local dir = path.dir(assetDestination)
         fs.mkdirp(dir)
-        local copySuccess = fs.safe_copy(source_path, assetDestination)
-        if not copySuccess then
+        local copy_success = fs.copy(source_path, assetDestination)
+        if not copy_success then
             return false, "Failed to copy asset: " .. source_path
         end
     end
@@ -131,8 +131,8 @@ local function update_env(obj, options)
         healthcheck_destination = path.combine(obj.healthchecks_dir, healthcheck_destination)
         local dir = path.dir(healthcheck_destination)
         fs.mkdirp(dir)
-        local copySuccess = fs.safe_copy(source_path, healthcheck_destination)
-        if not copySuccess then
+        local copy_success = fs.copy(source_path, healthcheck_destination)
+        if not copy_success then
             return false, "Failed to copy healthcheck: " .. source_path
         end
     end
@@ -167,7 +167,7 @@ function AscendTestEnv:new(options)
         obj.init = path.combine(obj.path, obj.init)
     end
 
-    local ok = fs.safe_mkdirp(obj.path)
+    local ok = fs.mkdirp(obj.path)
     if not ok then
         obj.error = "Failed to create test directory"
         return obj
