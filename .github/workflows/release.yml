@@ -20,6 +20,7 @@ jobs:
         uses: alis-is/setup-eli@v1
         with:
           prerelease: true
+          eli-version: '0.36.0-alpha.1'
 
       - name: test ascend
         working-directory: tests
