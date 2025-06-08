@@ -18,6 +18,8 @@ jobs:
 
       - name: setup eli
         uses: alis-is/setup-eli@v1
+        with:
+          prerelease: true
 
       - name: test ascend
         working-directory: tests
