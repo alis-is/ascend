@@ -116,4 +116,4 @@ function asctl.get_service_status(serviceName)
     return status, started
 end
 
-return asctl
+return util.generate_safe_functions(asctl)
