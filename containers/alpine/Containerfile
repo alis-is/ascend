@@ -3,6 +3,8 @@ FROM alpine:latest
 ENV ASCEND_SERVICES=/ascend/services
 ENV ASCEND_SOCKET=/var/run/ascend.socket
 ENV ASCEND_LOGS=/var/log/ascend
+# tell ami apps to use ascend as the backend
+ENV SERVICE_BACKEND=ascend
 
 RUN printf '#!/bin/sh\n\
 if [ -z "$GITHUB_TOKEN" ]; then\n\
