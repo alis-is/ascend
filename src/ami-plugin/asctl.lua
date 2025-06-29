@@ -79,8 +79,11 @@ function asctl.remove_service(service_name, options)
 
     trace("Removing service: ${service}", { service = service_name })
     local exit_code = asctl.exec("stop", service_name)
-    assert(exit_code == 0, "Failed to stop service")
-    trace("Service ${service} stopped.", { service = service_name })
+    if exit_code ~= 0 then
+        warn(string.interpolate("failed to stop service ${service} before removing it.", { service = service_name }))
+    else
+        trace("Service ${service} stopped.", { service = service_name })
+    end
 
     trace("Removing service...")
     local ok, err = fs.remove(serviceUnitFile)
