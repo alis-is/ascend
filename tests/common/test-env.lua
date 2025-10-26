@@ -108,6 +108,7 @@ local function update_env(obj, options)
     end
 
     for assetDestination, assetSourcePath in pairs(options.assets) do
+        local assetDestination = assetDestination
         local source_path = assetSourcePath or "."
         if not path.isabs(source_path) then
             source_path = path.combine(obj.tests_dir, assetSourcePath)
@@ -123,6 +124,7 @@ local function update_env(obj, options)
     end
 
     for healthcheck_destination, healthcheck_source_path in pairs(options.healthchecks or {}) do
+        local healthcheck_destination = healthcheck_destination
         local source_path = healthcheck_source_path or "."
         if not path.isabs(source_path) then
             source_path = path.combine(obj.tests_dir, healthcheck_source_path)
