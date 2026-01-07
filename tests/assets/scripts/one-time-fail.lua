@@ -1,5 +1,5 @@
 #!/usr/bin/env eli
 
 print("This will end after 1 sec")
-os.sleep(1)
+os.sleep(1, "s")
 os.exit(1)

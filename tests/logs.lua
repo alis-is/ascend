@@ -65,7 +65,7 @@ test["logs - rotate"] = function()
         while true do
             local logContent = read_file(logFile)
             local rotatedLogContent = read_file(rotatedLogFile)
-            os.sleep(1)
+            os.sleep(1, "s")
 
             if previousLogContent and logContent ~= previousLogContent then
                 logFileIsRotated = true
@@ -169,7 +169,7 @@ test["logs - max size"] = function()
         while true do
             local logFileSize = get_file_size(logFile)
             local nextLogFileExists = read_file(nextLogFile) ~= nil
-            os.sleep(1)
+            os.sleep(1, "s")
 
             if logFileSize and logFileSize > 1024 and nextLogFileExists then
                 break
@@ -220,7 +220,7 @@ test["logs - max files"] = function()
 
         while true do
             local exceededLogFileContent = read_file(exceededLogFile)
-            os.sleep(1)
+            os.sleep(1, "s")
 
             if exceededLogFileContent then
                 return false, "Exceeded max log files"

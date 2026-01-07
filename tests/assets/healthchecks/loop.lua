@@ -2,5 +2,5 @@
 
 while true do
 	print("date:", os.date())
-	os.sleep(5)
+	os.sleep(5, "s")
 end

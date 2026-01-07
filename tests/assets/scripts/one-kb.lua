@@ -11,5 +11,5 @@ while true do
 	print("SEbVoHJ9lOMqwJ8HJ2zOpA76KAhlnzvYLWcPGW9KNjFg5TzqI4zMEabLo1I7MQSHYRy1DXFkteCqeLOufeRacDncPMfkoN2mEBxL")
 	print("vwjAFYsGfx4vzvyxwzArMkBSGc14kHSIQ5dvswJOpWGHxn4fVEnMY7Ii4AYXSab77PQXGkqnWueaaOgHTgB1vYim6K40hQJ8VaN7")
 	print("s6KZCY8q0wfd3GXsizeOYkNLPBFu8sqozxgnqUqIWp6xHQILMJb5L3G49rDi3VpLuXdoRZGJRi5APrUawlxH2eCtY5NFEVWx6WEy")
-	os.sleep(1)
+	os.sleep(1, "s")
 end

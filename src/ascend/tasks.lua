@@ -71,7 +71,7 @@ function tasks.run(options)
 		if (options.stop_on_empty and #taskQueue == 0) then
 			return "empty"
 		end
-		os.sleep(100, 1000)
+		os.sleep(100, "ms")
 	end
 end
 

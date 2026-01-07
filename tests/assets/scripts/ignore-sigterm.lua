@@ -11,5 +11,5 @@ signal.handle(signal.SIGTERM, handle_sigterm)
 print("Script is running, try sending SIGTERM (kill -15 <PID>)")
 
 while true do
-    os.sleep(5)
+    os.sleep(5, "s")
 end

@@ -2,5 +2,5 @@
 print(os.cwd())
 
 while true do
-    os.sleep(5)
+    os.sleep(5, "s")
 end
