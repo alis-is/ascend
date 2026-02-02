@@ -257,6 +257,29 @@ local methodHandlers = {
 			data = result
 		})
 	end,
+	cat = function(request, respond)
+		if not check_params(request.params, check_is_array_of_strings, respond) then
+			return
+		end
+
+		if not check_params(request.params, check_manages_just_managed_services, respond) then
+			return
+		end
+
+		local result, err = services.cat(request.params)
+		if not result then
+			respond(nil, {
+				code = jsonrpc.error_codes.INTERNAL_ERROR,
+				message = err or "unknown error"
+			})
+			return
+		end
+
+		respond({
+			success = true,
+			data = result
+		})
+	end,
 }
 
 function server.listen()

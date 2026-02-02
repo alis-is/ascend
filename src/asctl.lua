@@ -101,13 +101,53 @@ local commands = {
 		end
 		print(format.status(response.data))
 	end,
-	show = function(parameters, options)
+	show = function(parameters, _)
 		local response, err = client.execute("show", parameters)
 		if not response then
 			log_error(err --[[ @as string ]])
 			os.exit(1)
 		end
 		print(format.show(response.data))
+	end,
+	cat = function(parameters, _)
+		local response, err = client.execute("cat", parameters)
+		if not response then
+			log_error(err --[[ @as string ]])
+			os.exit(1)
+		end
+
+		local output = response.data
+		local printed = false
+		local function emit(service_name)
+			local entry = output[service_name]
+			if not entry then
+				return
+			end
+			if printed then
+				io.write("\n")
+			end
+			if type(entry.source) == "string" then
+				print("# " .. entry.source)
+			end
+			if type(entry.content) == "string" then
+				io.write(entry.content)
+				if entry.content:sub(-1) ~= "\n" then
+					io.write("\n")
+				end
+			end
+			printed = true
+		end
+
+		if type(parameters) == "table" and #parameters > 0 then
+			for _, name in ipairs(parameters) do
+				local service_name = name:match("^(.+):") or name
+				emit(service_name)
+			end
+		else
+			for service_name, _ in pairs(output) do
+				emit(service_name)
+			end
+		end
 	end,
 	logs = function(parameters, options)
 		local response, err = client.execute("logs", parameters)

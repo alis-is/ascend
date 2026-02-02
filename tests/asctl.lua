@@ -1,6 +1,8 @@
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
+DISABLE_CLEANUP = false --- disable to see the tmp directory
+
 test["asctl - list"] = function()
     ---@type AscendTestEnvOptions
     local options = {
@@ -360,7 +362,7 @@ test["asctl - reload"] = function()
     test.assert(result, err)
 end
 
-test["asctl - ascend-healh"] = function()
+test["asctl - ascend-health"] = function()
     ---@type AscendTestEnvOptions
     local options = {
         services = {
@@ -475,6 +477,44 @@ test["asctl - show"] = function()
             show_result.date.default.args[1]:match("scripts/date.lua") and
             type(show_result.date.default.autostart) == "boolean" and show_result.date.default.autostart == true and
             type(show_result.date.default.restart) == "string" and show_result.date.default.restart == "on-exit"
+    end):result()
+    test.assert(result, err)
+end
+
+test["asctl - cat"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        while true do -- wait for service started
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "cat", "date" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local output = outputOrError
+        return output:match("# .+date%.hjson") and
+            output:match("executable") and
+            output:match("date%.lua")
     end):result()
     test.assert(result, err)
 end

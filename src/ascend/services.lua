@@ -194,6 +194,38 @@ function services.show(names)
 	return result
 end
 
+---@param names string[]
+---@return table<string, { source: string, content: string }>?, string?
+function services.cat(names)
+	local result = {}
+	for _, name in ipairs(names) do
+		local service_name = name_to_service_module(name)
+		local service = managed_services[service_name]
+		if not service then
+			local msg = string.interpolate("service ${name} not found", { name = service_name })
+			return nil, msg
+		end
+
+		local source = service.source
+		if type(source) ~= "string" then
+			local msg = string.interpolate("service ${name} source not found", { name = service_name })
+			return nil, msg
+		end
+
+		local content, err = fs.read_file(source)
+		if not content then
+			local msg = string.interpolate("failed to read ${source}: ${error}", { source = source, error = err })
+			return nil, msg
+		end
+
+		result[service_name] = {
+			source = source,
+			content = content
+		}
+	end
+	return result
+end
+
 ---@class StartOptions
 ---@field manual boolean?
 ---@field is_boot boolean?

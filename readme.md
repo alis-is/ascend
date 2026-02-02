@@ -82,6 +82,11 @@ asctl status <service-name>
 ```bash
 asctl show <service-name>
 ```
+
+* #### Show Service Definition File:
+```bash
+asctl cat <service-name>
+```
 Replace `<service-name>` with the name of your service.
 
 ## Logging
