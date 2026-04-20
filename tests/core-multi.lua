@@ -99,6 +99,85 @@ test["core - multi module - manual start"] = function()
     test.assert(result, err)
 end
 
+test["core - multi module - depends starts local dependency"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["multi"] = {
+                definition = {
+                    autostart = false,
+                    modules = {
+                        db = {
+                            executable = "${INTERPRETER}",
+                            args = { "${ENV_DIR}/assets/scripts/date.lua" },
+                        },
+                        api = {
+                            executable = "${INTERPRETER}",
+                            args = { "${ENV_DIR}/assets/scripts/date.lua" },
+                            depends = { "db" },
+                        },
+                    }
+                }
+            },
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua",
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        while true do
+            local line = ascendOutput:read("l", 1)
+            if line and (line:match("multi:db started") or line:match("multi:api started")) then
+                return false, "Service started automatically"
+            end
+            if os.time() > startTime + 3 then
+                break
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "start", "multi:api" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local startOrder = {}
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:db started") and startOrder.db == nil then
+                startOrder.db = 1
+            end
+            if line and line:match("multi:api started") and startOrder.api == nil then
+                startOrder.api = (startOrder.db ~= nil and 2 or 1)
+            end
+
+            if startOrder.db ~= nil and startOrder.api ~= nil then
+                break
+            end
+
+            if os.time() > startTime + 10 then
+                return false, "Dependent module did not start in time"
+            end
+        end
+
+        local showOk, showOutputOrError = env:asctl({ "show", "multi:api" })
+        if not showOk then
+            return false, showOutputOrError
+        end
+
+        local hjson = require "hjson"
+        local decoded = hjson.decode(showOutputOrError)
+        if type(decoded) ~= "table" then
+            return false, "failed to decode show output"
+        end
+
+        local depends = decoded.multi.api.depends
+        return startOrder.db < startOrder.api and type(depends) == "table" and depends[1] == "db"
+    end):result()
+    test.assert(result, err)
+end
+
 local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
@@ -197,6 +276,95 @@ test["core - multi module - stop"] = function()
         end
 
         return true
+    end):result()
+    test.assert(result, err)
+end
+
+test["core - multi module - depends stops dependents before dependency"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["multi"] = {
+                definition = {
+                    modules = {
+                        db = {
+                            executable = "${INTERPRETER}",
+                            args = { "${ENV_DIR}/assets/scripts/date.lua" },
+                        },
+                        api = {
+                            executable = "${INTERPRETER}",
+                            args = { "${ENV_DIR}/assets/scripts/date.lua" },
+                            depends = { "db" },
+                        },
+                    }
+                }
+            },
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua",
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        local started = {}
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:db started") then
+                started.db = true
+            end
+            if line and line:match("multi:api started") then
+                started.api = true
+            end
+
+            if started.db and started.api then
+                break
+            end
+
+            if os.time() > startTime + 10 then
+                return false, "Modules did not start in time"
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "stop", "multi:db" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local stopOrder = {}
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("multi:api stopped") and stopOrder.api == nil then
+                stopOrder.api = 1
+            end
+            if line and line:match("multi:db stopped") and stopOrder.db == nil then
+                stopOrder.db = (stopOrder.api ~= nil and 2 or 1)
+            end
+
+            if stopOrder.api ~= nil and stopOrder.db ~= nil then
+                break
+            end
+
+            if os.time() > startTime + 15 then
+                return false, "Dependency stop order not observed"
+            end
+        end
+
+        local statusOk, statusOutputOrError = env:asctl({ "status", "multi" })
+        if not statusOk then
+            return false, statusOutputOrError
+        end
+
+        local hjson = require "hjson"
+        local decoded = hjson.decode(statusOutputOrError)
+        if type(decoded) ~= "table" then
+            return false, "failed to decode status output"
+        end
+
+        return stopOrder.api < stopOrder.db and
+            decoded.multi.ok == true and
+            decoded.multi.status.api.state == "stopped" and
+            decoded.multi.status.db.state == "stopped"
     end):result()
     test.assert(result, err)
 end
@@ -743,7 +911,6 @@ test["core - single module - default values"] = function()
     local expected_defaults = {
         autostart = true,
         restart = "on-exit",
-        depends = {},
         log_max_size = 10485760,
         executable = "eli",
         log_max_files = 5,

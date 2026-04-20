@@ -32,7 +32,7 @@ local aenv = util.merge_tables({
 ---@field working_directory string?
 ---@field stop_signal number?
 ---@field stop_timeout number?
----@field depends string[]? -- //TODO: implement
+---@field depends string[]? -- dependencies that must be active before this module starts
 ---@field autostart boolean?
 ---@field start_delay number?
 ---@field restart "always" | "never" | "on-failure" | "on-success" | "on-exit" | nil
@@ -84,9 +84,18 @@ local function validate_service_definition(definition)
 			return false, msg
 		end
 
-		if not table.is_array(v.depends) then
-			local msg = string.interpolate("module ${name} - depends must be an array", module_info)
-			return false, msg
+		if v.depends ~= nil then
+			if not table.is_array(v.depends) then
+				local msg = string.interpolate("module ${name} - depends must be an array", module_info)
+				return false, msg
+			end
+
+			for _, dependency_name in ipairs(v.depends) do
+				if type(dependency_name) ~= "string" or #dependency_name == 0 then
+					local msg = string.interpolate("module ${name} - depends entries must be non-empty strings", module_info)
+					return false, msg
+				end
+			end
 		end
 
 		if type(v.restart) ~= "string" then
@@ -215,7 +224,6 @@ local serviceDefinitionDefaults = {
 	args = {},
 	environment = {},
 	stop_signal = signal.SIGTERM,
-	depends = {},
 	autostart = true,
 	restart = "on-exit",
 	restart_delay = 1,
@@ -244,7 +252,6 @@ local function normalize_service_definition(name, definition)
 			default = util.merge_tables({
 				executable = normalized.executable,
 				args = normalized.args,
-				depends = normalized.depends,
 				autostart = normalized.autostart,
 				start_delay = normalized.start_delay,
 				restart = normalized.restart,
@@ -268,10 +275,16 @@ local function normalize_service_definition(name, definition)
 
 	for id, module in pairs(normalized.modules) do
 		local args = util.clone(module.args)
+		local depends = module.depends or normalized.depends
+		if type(depends) == "table" then
+			depends = table.map(depends, tostring)
+		else
+			depends = nil
+		end
 		module = util.merge_tables(module, {
 			args = table.map(args, tostring),
 			environment = util.merge_tables(module.environment, normalized.environment),
-			depends = table.map(module.depends or normalized.depends or {}, tostring),
+			depends = depends,
 			autostart = module.autostart or normalized.autostart,
 			start_delay = module.start_delay or normalized.start_delay,
 			restart = module.restart or normalized.restart,

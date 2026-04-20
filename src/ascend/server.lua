@@ -8,12 +8,50 @@ local tasks = require "ascend.tasks"
 
 local server = {}
 
+local FRAME_HEADER_LENGTH = 4
+
 ---@class ClientMessageBuffer
 ---@field msg_length number
 ---@field msg string
 
 ---@type table<IPCSocket, ClientMessageBuffer>
 local clients = {}
+
+---@param socket IPCSocket
+---@param response string
+local function write_framed_response(socket, response)
+	local responseLen = #response
+	local responseLenBytes = encoding.encode_int(responseLen, FRAME_HEADER_LENGTH)
+	socket:write(responseLenBytes .. response)
+end
+
+---@param clientBuffer ClientMessageBuffer
+---@return string?
+local function take_next_message(clientBuffer)
+	if clientBuffer.msg_length == 0 then
+		if #clientBuffer.msg < FRAME_HEADER_LENGTH then
+			return nil
+		end
+
+		clientBuffer.msg_length = encoding.decode_int(clientBuffer.msg:sub(1, FRAME_HEADER_LENGTH))
+		clientBuffer.msg = clientBuffer.msg:sub(FRAME_HEADER_LENGTH + 1)
+	end
+
+	if clientBuffer.msg_length <= 0 then
+		clientBuffer.msg_length = 0
+		clientBuffer.msg = ""
+		return ""
+	end
+
+	if #clientBuffer.msg < clientBuffer.msg_length then
+		return nil
+	end
+
+	local message = clientBuffer.msg:sub(1, clientBuffer.msg_length)
+	clientBuffer.msg = clientBuffer.msg:sub(clientBuffer.msg_length + 1)
+	clientBuffer.msg_length = 0
+	return message
+end
 
 ---@class ServerHandlers
 ---@field new_task fun(task: thread)
@@ -269,59 +307,62 @@ function server.listen()
 				local incomingLen = #msg
 				if incomingLen == 0 then return end
 				local clientBuffer = clients[socket]
-				if clientBuffer.msg_length == 0 then
-					-- take first 4 bytes as length
-					local len = encoding.decode_int(msg:sub(1, 4))
-					clientBuffer.msg_length = len
-					clientBuffer.msg = msg:sub(5)
-				end
+				clientBuffer.msg = clientBuffer.msg .. msg
 
-				if clientBuffer.msg_length > 0 and clientBuffer.msg_length == #clientBuffer.msg then
-					local request, err = jsonrpc.parse_request(clientBuffer.msg)
-					clientBuffer.msg_length = 0
-					clientBuffer.msg = ""
+				while true do
+					local requestMessage = take_next_message(clientBuffer)
+					if requestMessage == nil then
+						return
+					end
+					if requestMessage == "" then
+						log_warn("failed to parse request: invalid message length")
+						return
+					end
+
+					local request, err = jsonrpc.parse_request(requestMessage)
 					if err or request == nil then
 						log_warn("failed to parse request: ${error}", { error = err or "unknown" })
-						return
+						goto CONTINUE
 					end
 					if type(request.id) ~= "string" then
 						log_debug("received notification: ${method}", { method = request.method })
-						return
+						goto CONTINUE
 					end
 					local handler = methodHandlers[request.method]
 					if not handler then
-						local response, err = jsonrpc.encode_response(request.id, nil, {
+						local response, responseErr = jsonrpc.encode_response(request.id, nil, {
 							code = jsonrpc.error_codes.METHOD_NOT_FOUND,
 							message = "method not found"
 						})
-						if err then
-							log_warn("failed to encode response: ${error}", { error = err })
-							return
+						if responseErr then
+							log_warn("failed to encode response: ${error}", { error = responseErr })
+							goto CONTINUE
 						end
-						socket:write(response --[[@as string]])
-						return
+						write_framed_response(socket, response --[[@as string]])
+						goto CONTINUE
 					end
 					log_trace("received request id - ${id}: ${method}", { id = request.id, method = request.method })
-					local success, err = pcall(handler, request, function(result, error)
-						local response, err = jsonrpc.encode_response(request.id, result, error)
-						if err then
-							log_warn("failed to encode response: ${error}", { error = err })
+					local success, handlerErr = pcall(handler, request, function(result, error)
+						local response, responseErr = jsonrpc.encode_response(request.id, result, error)
+						if responseErr then
+							log_warn("failed to encode response: ${error}", { error = responseErr })
 							return
 						end
-						local responseLen = #response
-						local responseLenBytes = encoding.encode_int(responseLen, 4)
-						socket:write(responseLenBytes .. response)
+						write_framed_response(socket, response --[[@as string]])
 					end)
 					if not success then
-						log_error("failed to handle request: ${error}", { error = err })
-						local response = jsonrpc.encode_response(request.id, nil, {
+						log_error("failed to handle request: ${error}", { error = handlerErr })
+						local response, responseErr = jsonrpc.encode_response(request.id, nil, {
 							code = jsonrpc.error_codes.INTERNAL_ERROR,
 							message = "internal error"
 						})
-						local responseLen = #response
-						local responseLenBytes = encoding.encode_int(responseLen, 4)
-						socket:write(responseLenBytes .. response)
+						if responseErr then
+							log_warn("failed to encode response: ${error}", { error = responseErr })
+							goto CONTINUE
+						end
+						write_framed_response(socket, response --[[@as string]])
 					end
+					::CONTINUE::
 				end
 			end,
 			disconnected = function(socket)
