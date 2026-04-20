@@ -277,6 +277,110 @@ test["core - single module - stop"] = function()
     test.assert(result, err)
 end
 
+test["core - single module - stop with log_file none"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+                definition = {
+                    log_file = "none",
+                }
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "stop", "date" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local statusOk, statusOutputOrError = env:asctl({ "status", "date" })
+        if not statusOk then
+            return false, statusOutputOrError
+        end
+
+        local hjson = require "hjson"
+        local decoded = hjson.decode(statusOutputOrError)
+        if type(decoded) ~= "table" then
+            return false, "failed to decode status output"
+        end
+
+        return decoded.date.ok == true and
+            decoded.date.status.default.state == "stopped" and
+            not fs.exists(path.combine(env:get_log_dir(), "date/default.log"))
+    end):result()
+    test.assert(result, err)
+end
+
+test["core - single module - stop with log_max_files zero"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+                definition = {
+                    log_max_files = 0,
+                }
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "stop", "date" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local statusOk, statusOutputOrError = env:asctl({ "status", "date" })
+        if not statusOk then
+            return false, statusOutputOrError
+        end
+
+        local hjson = require "hjson"
+        local decoded = hjson.decode(statusOutputOrError)
+        if type(decoded) ~= "table" then
+            return false, "failed to decode status output"
+        end
+
+        return decoded.date.ok == true and
+            decoded.date.status.default.state == "stopped" and
+            not fs.exists(path.combine(env:get_log_dir(), "date/default.log"))
+    end):result()
+    test.assert(result, err)
+end
+
 test["core - single module - stop signal"] = function()
     ---@type AscendTestEnvOptions
     local options = {
@@ -810,7 +914,6 @@ test["core - single module - default values"] = function()
     local expected_defaults = {
         autostart = true,
         restart = "on-exit",
-        depends = {},
         log_max_size = 10485760,
         executable = "eli",
         log_max_files = 5,
@@ -854,6 +957,69 @@ test["core - single module - default values"] = function()
         return util.equals(actual_defaults, expected_defaults, true);
     end):result()
 
+    test.assert(result, err)
+end
+
+test["core - single module - depends starts dependency service"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["db"] = {
+                source_path = "assets/services/simple-date.hjson",
+                definition = {
+                    autostart = false,
+                    start_delay = 2,
+                }
+            },
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+                definition = {
+                    depends = { "db" },
+                }
+            },
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        local startOrder = {}
+
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("db:default started") and startOrder.db == nil then
+                startOrder.db = 1
+            end
+
+            if line and line:match("date:default started") and startOrder.date == nil then
+                startOrder.date = (startOrder.db ~= nil and 2 or 1)
+            end
+
+            if startOrder.db ~= nil and startOrder.date ~= nil then
+                break
+            end
+
+            if os.time() > startTime + 10 then
+                return false, "Expected dependency-driven start order not observed"
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "show", "date" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local hjson = require "hjson"
+        local decoded = hjson.decode(outputOrError)
+        if type(decoded) ~= "table" then
+            return false, "failed to decode show output"
+        end
+
+        local depends = decoded.date.default.depends
+        return startOrder.db < startOrder.date and type(depends) == "table" and depends[1] == "db"
+    end):result()
     test.assert(result, err)
 end
 

@@ -49,6 +49,16 @@ local managed_services = {}
 
 local services = {}
 
+---@return AscendManagedServiceModuleHealth
+local function new_module_health_state()
+	return {
+		state = "healthy",
+		lastChecked = 0,
+		unhealthyCheckCount = 0,
+		isCheckInProgress = false
+	}
+end
+
 ---@param name string
 ---@return string
 ---@return string
@@ -58,6 +68,151 @@ local function name_to_service_module(name)
 		return name, "all"
 	end
 	return serviceName, moduleName
+end
+
+---@param service_name string
+---@param module_name string
+---@return string
+local function service_module_name(service_name, module_name)
+	return service_name .. ":" .. module_name
+end
+
+---@param current_service_name string
+---@param dependency_name string
+---@return string
+local function resolve_dependency_name(current_service_name, dependency_name)
+	local currentService = managed_services[current_service_name]
+	local dependencyServiceName, dependencyModuleName = name_to_service_module(dependency_name)
+	if dependencyModuleName ~= "all" then
+		return service_module_name(dependencyServiceName, dependencyModuleName)
+	end
+	if currentService and currentService.modules[dependency_name] then
+		return service_module_name(current_service_name, dependency_name)
+	end
+	return dependency_name
+end
+
+---@param name string
+---@return boolean
+local function is_target_active(name)
+	local service_name, module_name = name_to_service_module(name)
+	local service = managed_services[service_name]
+	if not service then
+		return false
+	end
+
+	if module_name == "all" then
+		for _, module in pairs(service.modules) do
+			if module.state ~= "active" then
+				return false
+			end
+		end
+		return true
+	end
+
+	local module = service.modules[module_name]
+	return module ~= nil and module.state == "active"
+end
+
+---@param service_name string
+---@param module_name string
+---@param module AscendManagedServiceModule
+---@return string[]?, string?
+local function get_module_dependencies(service_name, module_name, module)
+	local dependencies = {}
+	local seen = {}
+	for _, dependency_name in ipairs(module.definition.depends or {}) do
+		local normalizedDependencyName = resolve_dependency_name(service_name, dependency_name)
+		if not services.is_managed(normalizedDependencyName) then
+			local msg = string.interpolate("dependency ${dependency} for ${service}:${module} not found", {
+				dependency = dependency_name,
+				service = service_name,
+				module = module_name,
+			})
+			return nil, msg
+		end
+		if not seen[normalizedDependencyName] then
+			table.insert(dependencies, normalizedDependencyName)
+			seen[normalizedDependencyName] = true
+		end
+	end
+	return dependencies
+end
+
+---@param dependency_names string[]
+---@return boolean, string?
+local function dependencies_are_active(dependency_names)
+	local inactiveDependencies = {}
+	for _, dependency_name in ipairs(dependency_names) do
+		if not is_target_active(dependency_name) then
+			table.insert(inactiveDependencies, dependency_name)
+		end
+	end
+
+	if #inactiveDependencies > 0 then
+		return false, table.concat(inactiveDependencies, ", ")
+	end
+
+	return true
+end
+
+---@param module AscendManagedServiceModule
+---@param options StartOptions
+local function schedule_module_start(module, options)
+	local scheduledAt = os.time()
+	if options.is_boot and type(module.definition.start_delay) == "number" then
+		scheduledAt = scheduledAt + module.definition.start_delay
+	end
+
+	if module.state == "to-be-started" and type(module.toBeStartedAt) == "number" then
+		local currentScheduledAt = module.toBeStartedAt --[[@as number]]
+		scheduledAt = math.min(currentScheduledAt, scheduledAt)
+	end
+
+	module.toBeStartedAt = scheduledAt
+	module.state = "to-be-started"
+end
+
+---@param dependency_name string
+---@param target_name string
+---@return boolean
+local function dependency_matches_target(dependency_name, target_name)
+	local dependencyServiceName, dependencyModuleName = name_to_service_module(dependency_name)
+	local targetServiceName, targetModuleName = name_to_service_module(target_name)
+	if dependencyServiceName ~= targetServiceName then
+		return false
+	end
+
+	return dependencyModuleName == "all" or targetModuleName == "all" or dependencyModuleName == targetModuleName
+end
+
+---@param target_name string
+---@return string[]
+local function get_reverse_dependencies(target_name)
+	local dependents = {}
+	for service_name, service in pairs(managed_services) do
+		for module_name, module in pairs(service.modules) do
+			local currentModuleName = service_module_name(service_name, module_name)
+			if currentModuleName == target_name then
+				goto CONTINUE
+			end
+
+			local dependencies = get_module_dependencies(service_name, module_name, module)
+			if not dependencies then
+				goto CONTINUE
+			end
+
+			for _, dependency_name in ipairs(dependencies) do
+				if dependency_matches_target(dependency_name, target_name) then
+					table.insert(dependents, currentModuleName)
+					break
+				end
+			end
+
+			::CONTINUE::
+		end
+	end
+	return dependents
 end
 
 ---@param definition AscendServiceModuleDefinition
@@ -71,7 +226,8 @@ local function new_managed_module(definition)
 		started = nil,
 		stopped = nil,
 		manuallyStopped = false,
-		restartCount = 0
+		restartCount = 0,
+		health = new_module_health_state()
 	}
 end
 
@@ -154,9 +310,10 @@ function services.list(services, extended)
 		list[name] = {}
 		for moduleName, module in pairs(managed_services[name].modules) do
 			if extended then
+				local hasHealthcheck = type(module.definition.healthcheck) == "table"
 				list[name][moduleName] = {
 					state = module.state,
-					health = module.health.state,
+					health = hasHealthcheck and module.health.state or nil,
 					pid = module.process and module.process:get_pid(),
 				}
 			else
@@ -229,6 +386,7 @@ end
 ---@class StartOptions
 ---@field manual boolean?
 ---@field is_boot boolean?
+---@field force boolean?
 
 ---@param module AscendManagedServiceModule
 ---@param options StartOptions?
@@ -284,13 +442,9 @@ local function start_module(module, options)
 	module.exit_code = nil
 	module.started = os.time()
 	module.stopped = nil
+	module.toBeStartedAt = nil
 	module.manuallyStopped = false
-	module.health = {
-		state = "healthy",
-		lastChecked = 0,
-		unhealthyCheckCount = 0,
-		isCheckInProgress = false
-	}
+	module.health = new_module_health_state()
 	if module.definition.log_file ~= "none" then
 		module.__output = process:get_stdout() -- stdout and stderr are combined because of `output = "pipe"`
 		module.__output_file = module.__output_file or log.create_log_file(module.definition)
@@ -300,13 +454,65 @@ local function start_module(module, options)
 	return true
 end
 
+---@param service_name string
+---@param module_name string
+---@param managedModule AscendManagedServiceModule
+---@param options StartOptions?
+---@param scheduled boolean?
+---@return boolean, string?
+local function try_start_managed_module(service_name, module_name, managedModule, options, scheduled)
+	if managedModule.state == "active" then
+		return true
+	end
+
+	if managedModule.definition.working_directory and not fs.exists(managedModule.definition.working_directory) then
+		local err = string.interpolate("working directory for ${name}:${module} does not exist", {
+			name = service_name,
+			module = module_name,
+		})
+		log_warn(err)
+		return false, err
+	end
+
+	log_debug("starting ${name}:${module} - ${executable} from '${working_directory}'",
+		{
+			name = service_name,
+			working_directory = managedModule.definition.working_directory,
+			executable = managedModule.definition.executable,
+			module = module_name
+		})
+	local ok, err = start_module(managedModule, options)
+	if not ok then
+		log_debug("failed to start ${name}:${module} (${executable}) from '${working_directory}' - ${error}",
+			{
+				name = service_name,
+				working_directory = managedModule.definition.working_directory,
+				executable = managedModule.definition.executable,
+				module = module_name,
+				error = err
+			})
+		log_warn("failed to start ${name}:${module}", { name = service_name, module = module_name })
+		return false, err
+	end
+
+	if scheduled and type(managedModule.definition.start_delay) == "number" then
+		log_debug("${service}:${module} started (delayed)", { service = service_name, module = module_name })
+	else
+		log_info("${name}:${module} started", { name = service_name, module = module_name })
+	end
+
+	return true
+end
+
 ---@param name string
 ---@param options StartOptions?
+---@param visiting table<string, boolean>?
 ---@return boolean, string?
-function services.start(name, options)
+local function start_target(name, options, visiting)
 	if type(options) ~= "table" then
 		options = {}
 	end
+	visiting = visiting or {}
 
 	local service_name, module_name = name_to_service_module(name)
 	local service = managed_services[service_name]
@@ -319,53 +525,65 @@ function services.start(name, options)
 	local modulesToManageCount = #table.keys(modulesToManage)
 	if modulesToManageCount == 0 then
 		local msg = string.interpolate("module ${module} not found in service ${service}",
-		{ module = module_name, service = service_name })
+			{ module = module_name, service = service_name })
 		return false, msg
 	end
 
-	-- ---@type string[]
-	-- local failedModules = {}
-	-- local startedModules = 0
-	for module_name, managedModule in pairs(modulesToManage) do
-		if options.is_boot then
-			if not managedModule.definition.autostart then
-				-- if we are only starting auto-start modules, skip this module
+	for current_module_name, managedModule in pairs(modulesToManage) do
+		if options.is_boot and not options.force and not managedModule.definition.autostart then
+			goto CONTINUE
+		end
+
+		local currentModuleName = service_module_name(service_name, current_module_name)
+		if visiting[currentModuleName] then
+			local msg = string.interpolate("circular dependency detected for ${name}", { name = currentModuleName })
+			return false, msg
+		end
+
+		visiting[currentModuleName] = true
+		local dependencies, err = get_module_dependencies(service_name, current_module_name, managedModule)
+		if not dependencies then
+			visiting[currentModuleName] = nil
+			return false, err
+		end
+
+		for _, dependency_name in ipairs(dependencies) do
+			local ok, dependencyErr = start_target(dependency_name, {
+				manual = options.manual,
+				is_boot = options.is_boot,
+				force = true,
+			}, visiting)
+			if not ok then
+				visiting[currentModuleName] = nil
+				return false, dependencyErr
+			end
+		end
+		visiting[currentModuleName] = nil
+
+		local dependenciesReady, inactiveDependencies = dependencies_are_active(dependencies)
+		if not dependenciesReady then
+			if options.is_boot then
+				schedule_module_start(managedModule, options)
 				goto CONTINUE
 			end
 
-			if type(managedModule.definition.start_delay) == "number" then
-				managedModule.toBeStartedAt = os.time() + managedModule.definition.start_delay
-				managedModule.state = "to-be-started"
-				goto CONTINUE
-			end
+			local err = string.interpolate("dependencies for ${name} are not active: ${dependencies}", {
+				name = currentModuleName,
+				dependencies = inactiveDependencies,
+			})
+			return false, err
 		end
-	
-		if managedModule.definition.working_directory and not fs.exists(managedModule.definition.working_directory) then
-			log_warn("working directory for ${name}:${module} does not exist",
-				{ name = service_name, module = module_name })
+
+		if options.is_boot and type(managedModule.definition.start_delay) == "number" then
+			schedule_module_start(managedModule, options)
 			goto CONTINUE
 		end
-		log_debug("starting ${name}:${module} - ${executable} from '${working_directory}'",
-			{
-				name = service_name,
-				working_directory = managedModule.definition.working_directory,
-				executable = managedModule.definition.executable,
-				module = module_name
-			})
-		local ok, err = start_module(managedModule, options)
+
+		local ok, err = try_start_managed_module(service_name, current_module_name, managedModule, options)
 		if not ok then
-			log_debug("failed to start ${name}:${module} (${executable}) from '${working_directory}' - ${error}",
-				{
-					name = service_name,
-					working_directory = managedModule.definition.working_directory,
-					executable = managedModule.definition.executable,
-					module = module_name,
-					error = err
-				})
-			log_warn("failed to start ${name}:${module}", { name = service_name, module = module_name })
-		else
-			log_info("${name}:${module} started", { name = service_name, module = module_name })
+			return false, err
 		end
+
 		::CONTINUE::
 	end
 
@@ -375,7 +593,7 @@ end
 ---@param module AscendManagedServiceModule
 ---@param exit_code integer
 ---@param manual boolean?
-local function update_module_state_to_stopepd(module, exit_code, manual)
+local function update_module_state_to_stopped(module, exit_code, manual)
 	module.state = "stopped"
 	module.exit_code = exit_code
 	module.process = nil
@@ -383,15 +601,32 @@ local function update_module_state_to_stopepd(module, exit_code, manual)
 	module.manuallyStopped = manual == true
 
 	log.collect_output(module) -- collect the last output
-	module.__output_file:write(" -- service stop --\n")
-	module.__output_file:close()
+	if module.__output_file then
+		module.__output_file:write(" -- service stop --\n")
+		module.__output_file:close()
+	end
 	module.__output_file = nil
+	module.__output = nil
 end
 
 ---@param name string
 ---@param manual boolean?
+---@param visited table<string, boolean>?
 ---@return boolean, string?
-function services.stop(name, manual)
+local function stop_target(name, manual, visited)
+	visited = visited or {}
+	if visited[name] then
+		return true
+	end
+	visited[name] = true
+
+	for _, dependent_name in ipairs(get_reverse_dependencies(name)) do
+		local ok, err = stop_target(dependent_name, manual, visited)
+		if not ok then
+			return false, err
+		end
+	end
+
 	local service_name, module_name = name_to_service_module(name)
 	local service = managed_services[service_name]
 	if not service then
@@ -402,19 +637,19 @@ function services.stop(name, manual)
 	local modulesToStop = module_name == "all" and service.modules or { [module_name] = service.modules[module_name] }
 	local modulesToManageCount = #table.keys(modulesToStop)
 	if modulesToManageCount == 0 then
-		local msg =string.interpolate("module ${module} not found in service ${service}",
+		local msg = string.interpolate("module ${module} not found in service ${service}",
 			{ module = module_name, service = service_name })
 		return false, msg
 	end
 
 	local stopJobs = {}
 
-	for module_name, module in pairs(modulesToStop) do
+	for current_module_name, module in pairs(modulesToStop) do
 		if module.state ~= "active" then
 			goto CONTINUE
 		end
 
-		log_debug("stopping ${service}:${module}", { service = service_name, module = module_name })
+		log_debug("stopping ${service}:${module}", { service = service_name, module = current_module_name })
 		module.state = "stopping"
 
 		table.insert(stopJobs, coroutine.create(function()
@@ -429,41 +664,38 @@ function services.stop(name, manual)
 			end
 
 			local timeout = module.definition.stop_timeout or 10
-			-- get date in seconds
 			local startTime = os.time()
 			while os.time() - startTime < timeout + 1 do
 				coroutine.yield()
 				local exit_code = module.process:wait(1, 1000)
 				if exit_code >= 0 then
-					update_module_state_to_stopepd(module, exit_code, manual)
-					log_info("${service}:${module} stopped", { service = service_name, module = module_name })
+					update_module_state_to_stopped(module, exit_code, manual)
+					log_info("${service}:${module} stopped", { service = service_name, module = current_module_name })
 					return
 				end
 				coroutine.yield()
 				if not signalSent then
-					-- if we haven't sent a signal yet, send a SIGKILL
 					signalSent, err = killTarget:kill(signal.SIGKILL)
 				end
 			end
 
 			if not signalSent then
 				log_debug("failed to send signal to ${service}:${module} - ${error}",
-					{ service = service_name, module = module_name, error = err })
+					{ service = service_name, module = current_module_name, error = err })
 			end
 
 			log_debug("${service}:${module} did not stop in time, killing it",
-				{ service = service_name, module = module_name })
+				{ service = service_name, module = current_module_name })
 
-			-- force termination
 			killTarget:kill(signal.SIGKILL)
 			local exit_code = module.process:wait(10, 1000)
 			if exit_code >= 0 then
-				update_module_state_to_stopepd(module, exit_code, manual)
-				log_info("${service}:${module} stopped (killed)", { service = service_name, module = module_name })
+				update_module_state_to_stopped(module, exit_code, manual)
+				log_info("${service}:${module} stopped (killed)", { service = service_name, module = current_module_name })
 				return
 			end
 
-			log_warn("failed to stop ${service}:${module}", { service = service_name, module = module_name })
+			log_warn("failed to stop ${service}:${module}", { service = service_name, module = current_module_name })
 		end))
 		::CONTINUE::
 	end
@@ -472,17 +704,30 @@ function services.stop(name, manual)
 	return true
 end
 
+---@param name string
+---@param options StartOptions?
+---@return boolean, string?
+function services.start(name, options)
+	return start_target(name, options, {})
+end
+
+---@param name string
+---@param manual boolean?
+---@return boolean, string?
+function services.stop(name, manual)
+	return stop_target(name, manual, {})
+end
+
 function services.stop_all()
 	return coroutine.create(function()
 		log_info("stopping all services")
-		local stopJobs = jobs.create_queue(jobs.array_to_array_of_params(table.keys(managed_services)), function(name)
-			local ok, err = services.stop(name)
+		local visited = {}
+		for name in pairs(managed_services) do
+			local ok, err = stop_target(name, nil, visited)
 			if not ok then
 				log_error(err --[[@as string]])
 			end
-		end)
-
-		jobs.run_queue(stopJobs)
+		end
 	end)
 end
 
@@ -602,14 +847,25 @@ function services.manage(start)
 					end
 
 					if module.state == "to-be-started" then
-						if module.toBeStartedAt < time then
-							local ok, err = start_module(module, { is_boot = true })
+						if (module.toBeStartedAt or 0) < time then
+							local dependencies, err = get_module_dependencies(service_name, module_name, module)
+							if not dependencies then
+								log_error("failed to start ${service}:${module} - ${error}",
+									{ service = service_name, module = module_name, error = err })
+								module.state = "inactive"
+								module.toBeStartedAt = nil
+								goto CONTINUE
+							end
+
+							local dependenciesReady = dependencies_are_active(dependencies)
+							if not dependenciesReady then
+								goto CONTINUE
+							end
+
+							local ok, err = try_start_managed_module(service_name, module_name, module, { is_boot = true }, true)
 							if not ok then
 								log_error("failed to start ${service}:${module} - ${error}",
 									{ service = service_name, module = module_name, error = err })
-							else
-								log_debug("${service}:${module} started (delayed)",
-									{ service = service_name, module = module_name })
 							end
 						end
 						goto CONTINUE
@@ -624,7 +880,7 @@ function services.manage(start)
 							module.state = exit_code == 0 and "stopped" or "failed"
 							module.process = nil
 							module.stopped = time
-						elseif module.health.state == "unhealthy" and module.definition.healthcheck.action == "restart" then
+						elseif type(module.definition.healthcheck) == "table" and module.health.state == "unhealthy" and module.definition.healthcheck.action == "restart" then
 							log_debug("${service}:${module} is unhealthy", { service = service_name, module = module_name })
 							services.stop(string.interpolate("${service}:${module}",
 								{ service = service_name, module = module_name }))

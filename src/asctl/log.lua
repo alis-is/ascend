@@ -16,7 +16,8 @@ end
 ---@param id string
 ---@param path string
 local function open_log_file(id, path)
-    local ino, stream, err
+    local ino, err
+    local stream
     local cache = ""
 
     return {
@@ -26,7 +27,9 @@ local function open_log_file(id, path)
                 if not stream then
                     return string.interpolate("${id} | failed to open file: ${error}", { id = id, error = err })
                 end
+                ---@cast stream EliReadableStream
             end
+            ---@cast stream EliReadableStream
             local new_ino, err = get_file_ino(path)
             if not new_ino then
                 log_warn("failed to get ino for file: ${path} (error: ${error})", { path = path, error = err })
@@ -79,8 +82,8 @@ function log.stream(files, timeout)
         table.insert(streams, open_log_file(id, path))
     end
 
-    local start_time = os.time()
-    while type(timeout) ~= "number" or timeout == 0 or start_time + timeout > os.time() do
+    local deadline = type(timeout) == "number" and timeout > 0 and os.time() + timeout or nil
+    while deadline == nil or os.time() < deadline do
         for i = 1, #streams do
             local line = streams[i].read()
             if line ~= "" then

@@ -7,6 +7,7 @@ require "isolation"
 require "healtchecks"
 require "logs"
 require "asctl"
+require "protocol"
 require "advanced"
 
 TEST.summary()

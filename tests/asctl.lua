@@ -2,6 +2,8 @@ local test = TEST or require "u-test"
 local new_test_env = require "common.test-env"
 
 DISABLE_CLEANUP = false --- disable to see the tmp directory
+local EXIT_JSONRPC_ERROR = 20
+local EXIT_COMMAND_ERROR = 21
 
 test["asctl - list"] = function()
     ---@type AscendTestEnvOptions
@@ -38,7 +40,7 @@ test["asctl - list"] = function()
         end
 
         local output = outputOrError
-        return output:match("date") and output:match("date2")
+        return output:match("date") and output:match("date2") and not output:match("\nnil%s*$")
     end):result()
     test.assert(result, err)
 end
@@ -77,7 +79,56 @@ test["asctl - list --extended"] = function()
         end
 
         local output = outputOrError
-        return output:match("date") and output:match("date2") and output:match("pid") and output:match("state")
+        return output:match("date") and output:match("date2") and output:match("pid") and output:match("state") and
+            not output:match("\nnil%s*$")
+    end):result()
+    test.assert(result, err)
+end
+
+test["asctl - list --extended inactive service"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+                definition = {
+                    autostart = false,
+                }
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+
+        while true do
+            local line = ascendOutput:read("l", 1)
+            if line and line:match("date:default started") then
+                return false, "Service started automatically"
+            end
+            if os.time() > startTime + 3 then
+                break
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "list", "--extended" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local hjson = require "hjson"
+        local decoded = hjson.decode(outputOrError)
+        if type(decoded) ~= "table" then
+            return false, "failed to decode extended list output"
+        end
+
+        return decoded.date ~= nil and
+            decoded.date.default ~= nil and
+            decoded.date.default.state == "inactive" and
+            decoded.date.default.health == nil
     end):result()
     test.assert(result, err)
 end
@@ -233,6 +284,41 @@ test["asctl - start"] = function()
         end
 
         return true
+    end):result()
+    test.assert(result, err)
+end
+
+test["asctl - start command failure returns command exit code"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+                definition = {
+                    autostart = false,
+                    working_directory = "missing",
+                }
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        while true do
+            local line = ascendOutput:read("l", 1)
+            if line and line:match("ascend started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Ascend did not start in time"
+            end
+        end
+
+        local ok, _, exitCode = env:asctl({ "start", "date" }, 2000)
+        return not ok and exitCode == EXIT_COMMAND_ERROR
     end):result()
     test.assert(result, err)
 end
@@ -429,7 +515,8 @@ test["asctl - status"] = function()
         end
 
         local output = outputOrError
-        return output:match("date") and output:match("status") and output:match('"ok":true')
+        return output:match("date") and output:match("status") and output:match('"ok":true') and
+            not output:match("\nnil%s*$")
     end):result()
     test.assert(result, err)
 end
@@ -476,7 +563,8 @@ test["asctl - show"] = function()
             type(show_result.date.default.args) == "table" and #show_result.date.default.args == 1 and
             show_result.date.default.args[1]:match("scripts/date.lua") and
             type(show_result.date.default.autostart) == "boolean" and show_result.date.default.autostart == true and
-            type(show_result.date.default.restart) == "string" and show_result.date.default.restart == "on-exit"
+            type(show_result.date.default.restart) == "string" and show_result.date.default.restart == "on-exit" and
+            not output:match("\nnil%s*$")
     end):result()
     test.assert(result, err)
 end
@@ -511,10 +599,58 @@ test["asctl - cat"] = function()
             return false, outputOrError
         end
 
-        local output = outputOrError
-        return output:match("# .+date%.hjson") and
-            output:match("executable") and
-            output:match("date%.lua")
+        local expected, readErr = fs.read_file(path.combine(env:get_service_dir(), "date.hjson"))
+        if not expected then
+            return false, readErr
+        end
+
+        local output = outputOrError:gsub("\n$", "")
+        expected = expected:gsub("\n$", "")
+
+        return output == expected
+    end):result()
+    test.assert(result, err)
+end
+
+test["asctl - cat multiple services includes source headers in request order"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-date.hjson",
+            },
+            ["date2"] = {
+                source_path = "assets/services/simple-date.hjson",
+            }
+        },
+        assets = {
+            ["scripts/date.lua"] = "assets/scripts/date.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        while true do -- wait for service started
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        local ok, outputOrError = env:asctl({ "cat", "date2", "date" })
+        if not ok then
+            return false, outputOrError
+        end
+
+        local date2Source = path.combine(env:get_service_dir(), "date2.hjson")
+        local dateSource = path.combine(env:get_service_dir(), "date.hjson")
+        local firstHeader = outputOrError:find("# " .. date2Source, 1, true)
+        local secondHeader = outputOrError:find("# " .. dateSource, 1, true)
+
+        return firstHeader ~= nil and secondHeader ~= nil and firstHeader < secondHeader
     end):result()
     test.assert(result, err)
 end
@@ -544,7 +680,7 @@ test["asctl - logs"] = function()
             end
         end
 
-        local ok, outputOrError = env:asctl({ "logs", "date", "--timeout=7" })
+        local ok, outputOrError = env:asctl({ "logs", "date", "--timeout=7s" })
         if not ok then
             return false, outputOrError
         end
@@ -561,6 +697,53 @@ test["asctl - logs"] = function()
             return false, "Expected log message not found 2 times"
         end
         return true
+    end):result()
+    test.assert(result, err)
+end
+
+test["asctl - invalid timeout returns command exit code"] = function()
+    local env <close> = new_test_env({ services = {}, assets = {} })
+    local envOk, envErr = env:result()
+    if not envOk then
+        test.assert(false, envErr)
+        return
+    end
+
+    local srcDir <close> = require "common.working-dir"("../src")
+    local ok, outputOrError, exitCode = env:asctl({ "list", "--timeout=invalid" }, 2000)
+    test.assert(not ok and exitCode == EXIT_COMMAND_ERROR, outputOrError)
+end
+
+test["asctl - request timeout returns jsonrpc exit code"] = function()
+    ---@type AscendTestEnvOptions
+    local options = {
+        services = {
+            ["date"] = {
+                source_path = "assets/services/simple-ignore-sigterm.hjson",
+                definition = {
+                    stop_timeout = 3,
+                }
+            }
+        },
+        assets = {
+            ["scripts/ignore-sigterm.lua"] = "assets/scripts/ignore-sigterm.lua"
+        }
+    }
+
+    local result, err = new_test_env(options):run(function(env, ascendOutput)
+        local startTime = os.time()
+        while true do
+            local line = ascendOutput:read("l", 2)
+            if line and line:match("date:default started") then
+                break
+            end
+            if os.time() > startTime + 10 then
+                return false, "Service did not start in time"
+            end
+        end
+
+        local ok, _, exitCode = env:asctl({ "stop", "date", "--timeout=1s" }, 5000)
+        return not ok and exitCode == EXIT_JSONRPC_ERROR
     end):result()
     test.assert(result, err)
 end

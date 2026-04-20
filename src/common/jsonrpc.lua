@@ -1,5 +1,11 @@
 local jsonrpc = {}
 
+---@param value any
+---@return boolean
+local function is_non_empty_string(value)
+	return type(value) == "string" and #value > 0
+end
+
 ---@class JsonRpcRequest
 ---@field jsonrpc "2.0"
 ---@field id string
@@ -36,10 +42,10 @@ function jsonrpc.parse_request(msg)
 	if result.jsonrpc ~= "2.0" then
 		return nil, "unsupported jsonrpc version"
 	end
-	if type(result.id) ~= "string" then
+	if result.id ~= nil and not is_non_empty_string(result.id) then
 		return nil, "id must be a string"
 	end
-	if type(result.method) ~= "string" then
+	if not is_non_empty_string(result.method) then
 		return nil, "method must be a string"
 	end
 	return result
@@ -59,7 +65,7 @@ function jsonrpc.parse_response(msg)
 	if result.jsonrpc ~= "2.0" then
 		return nil, "unsupported jsonrpc version"
 	end
-	if type(result.id) ~= "string" then
+	if not is_non_empty_string(result.id) then
 		return nil, "id must be a string"
 	end
 	if result.result ~= nil and result.error ~= nil then
@@ -96,7 +102,7 @@ function jsonrpc.parse_notification(msg)
 	if result.jsonrpc ~= "2.0" then
 		return nil, "unsupported jsonrpc version"
 	end
-	if type(result.method) ~= "string" then
+	if not is_non_empty_string(result.method) then
 		return nil, "method must be a string"
 	end
 	return result
@@ -108,11 +114,11 @@ end
 ---@param params any
 ---@return string?, string?
 function jsonrpc.encode_request(id, method, params)
-	if type(id) ~= "string" and #id > 0 then
+	if not is_non_empty_string(id) then
 		return nil, "id must be a string"
 	end
 
-	if type(method) ~= "string" and #method > 0 then
+	if not is_non_empty_string(method) then
 		return nil, "method must be a string"
 	end
 
@@ -130,7 +136,7 @@ end
 ---@param error JsonRpcError?
 ---@return string?, string?
 function jsonrpc.encode_response(id, result, error)
-	if type(id) ~= "string" and #id > 0 then
+	if not is_non_empty_string(id) then
 		return nil, "id must be a string"
 	end
 
@@ -155,7 +161,7 @@ end
 ---@param params any
 ---@return string?, string?
 function jsonrpc.encode_notification(method, params)
-	if type(method) ~= "string" and #method > 0 then
+	if not is_non_empty_string(method) then
 		return nil, "method must be a string"
 	end
 

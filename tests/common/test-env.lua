@@ -45,7 +45,7 @@ local enter_dir = require "common.working-dir"
 ---@field get_service_dir fun(self: AscendTestEnv): string
 ---@field get_log_dir fun(self: AscendTestEnv): string
 ---@field get_assets_dir fun(self: AscendTestEnv): string
----@field asctl fun(self: AscendTestEnv, args: string[], timeout: number?): boolean, string
+---@field asctl fun(self: AscendTestEnv, args: string[], timeout: number?): boolean, string, integer? -- timeout is in ms
 
 ---@param definition table<string, any>
 ---@param envPath string
@@ -295,7 +295,7 @@ function AscendTestEnv:asctl(args, timeout)
         asctlProcess:kill()
         return false, "timeout"
     end
-    return exitCode == 0, output:read("a")
+    return exitCode == 0, output:read("a"), exitCode
 end
 
 function AscendTestEnv:result()
