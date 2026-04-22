@@ -1,4 +1,4 @@
-local isUnix = package.config:sub(1, 1) == "/"
+local is_unix = package.config:sub(1, 1) == "/"
 
 local slices = {}
 
@@ -22,7 +22,14 @@ local function current_user(get_env)
 	return read_env(get_env, "ASCEND_USER") or read_env(get_env, "USER") or read_env(get_env, "USERNAME")
 end
 
+local function system_socket_path()
+	return is_unix and "/tmp/ascend.sock" or "\\\\.\\pipe\\ascend"
+end
+
 local function current_user_socket(get_env)
+	if not is_unix then
+		return "\\\\.\\pipe\\ascend-" .. sanitize_slice_user(current_user(get_env))
+	end
 	local runtime_dir = read_env(get_env, "XDG_RUNTIME_DIR")
 	if runtime_dir then
 		return path.combine(runtime_dir, "ascend.sock")
@@ -36,11 +43,14 @@ local function requested_user_socket(get_env, user)
 	if requested_user == current then
 		return current_user_socket(get_env)
 	end
+	if not is_unix then
+		return "\\\\.\\pipe\\ascend-" .. requested_user
+	end
 	return path.combine("/tmp", "ascend-" .. requested_user .. ".sock")
 end
 
 function slices.detect_is_root(get_env)
-	if not isUnix then
+	if not is_unix then
 		return false
 	end
 	get_env = get_env or os.getenv
@@ -63,7 +73,7 @@ function slices.resolve_ascend_defaults(options)
 	if is_root == nil then
 		is_root = slices.detect_is_root(get_env)
 	end
-	if isUnix and not is_root then
+	if is_unix and not is_root then
 		local user = current_user(get_env)
 		local home = read_env(get_env, "HOME")
 		local tmp_root = path.combine("/tmp", "ascend-" .. sanitize_slice_user(user))
@@ -86,10 +96,10 @@ function slices.resolve_ascend_defaults(options)
 	return {
 		scope = "system",
 		user = nil,
-		services_directory = isUnix and "/etc/ascend/services" or "C:\\ascend\\services",
-		healthchecksDirectory = isUnix and "/etc/ascend/healthchecks" or "C:\\ascend\\healthchecks",
-		ipcEndpoint = "/tmp/ascend.sock",
-		logDirectory = isUnix and "/var/log/ascend" or "C:\\ascend\\logs",
+		services_directory = is_unix and "/etc/ascend/services" or "C:\\ascend\\services",
+		healthchecksDirectory = is_unix and "/etc/ascend/healthchecks" or "C:\\ascend\\healthchecks",
+		ipcEndpoint = system_socket_path(),
+		logDirectory = is_unix and "/var/log/ascend" or "C:\\ascend\\logs",
 		initScript = nil,
 	}
 end
@@ -102,7 +112,7 @@ function slices.resolve_asctl_defaults(options)
 		return {
 			scope = "system",
 			user = nil,
-			ipcEndpoint = "/tmp/ascend.sock",
+			ipcEndpoint = system_socket_path(),
 		}
 	end
 	local requested_user = type(user_option) == "string" and #user_option > 0 and user_option ~= "true" and user_option or
