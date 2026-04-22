@@ -417,6 +417,10 @@ local function start_module(module, options)
 		log_warn("user is not supported on windows, ignoring")
 		module.definition.user = nil
 	end
+	if module.definition.user and aenv.scope == "user" then
+		log_warn("user is not supported for user slices, ignoring")
+		module.definition.user = nil
+	end
 
 	local output = module.definition.log_file == "none" and "inherit" or "pipe"
 	local process, err = proc.spawn(module.definition.executable, module.definition.args,
