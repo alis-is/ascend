@@ -1,4 +1,5 @@
 local is_unix = package.config:sub(1, 1) == "/"
+local path = path
 
 local slices = {}
 
