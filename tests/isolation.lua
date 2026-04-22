@@ -44,7 +44,7 @@ test["user slices - ascend defaults switch to user scope"] = function()
     test.equal("/tmp/runtime/ascend.sock", resolved.ipcEndpoint)
 end
 
-test["user slices - asctl user socket can target explicit user"] = function()
+test["user slices - asctl user socket can target explicit cross-user slice"] = function()
     if is_windows() then
         print("Test skipped: Not supported on Windows")
         return

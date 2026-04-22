@@ -1,4 +1,5 @@
 local is_unix = package.config:sub(1, 1) == "/"
+local fs = fs
 local path = path
 
 local slices = {}
@@ -54,17 +55,25 @@ function slices.detect_is_root(get_env)
 	if not is_unix then
 		return false
 	end
-	get_env = get_env or os.getenv
-	local handle = io.popen("id -u 2>/dev/null")
+	local id_command = nil
+	if fs and fs.exists("/usr/bin/id") then
+		id_command = "/usr/bin/id -u"
+	elseif fs and fs.exists("/bin/id") then
+		id_command = "/bin/id -u"
+	end
+	if not id_command then
+		return false
+	end
+	local handle = io.popen(id_command)
 	if not handle then
-		return current_user(get_env) == "root"
+		return false
 	end
 	local uid = handle:read("l")
 	handle:close()
-	if uid ~= nil then
-		return uid == "0"
+	if type(uid) ~= "string" or uid:match("^%d+$") == nil then
+		return false
 	end
-	return current_user(get_env) == "root"
+	return uid == "0"
 end
 
 function slices.resolve_ascend_defaults(options)
