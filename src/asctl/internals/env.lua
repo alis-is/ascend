@@ -1,7 +1,11 @@
 local args = require "common.args"
+local slices = require "common.slices"
 
-return {
+local defaults = slices.resolve_asctl_defaults({
+	user_option = args.options.user,
+})
+
+return util.merge_tables({
 	ipcEndpoint = args.options.socket or
-		env.get_env("ASCEND_SOCKET") or
-		"/tmp/ascend.sock",
-}
+		env.get_env("ASCEND_SOCKET"),
+}, defaults)

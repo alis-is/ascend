@@ -104,6 +104,7 @@ Notes:
 * If `modules` is omitted, Ascend creates a single module named `default`.
 * When you start a module or service, Ascend starts its dependencies first. During boot, dependents wait in `to-be-started` state until their dependencies become active.
 * When you explicitly stop a dependency, Ascend stops its dependents before stopping the dependency itself.
+* When `ascend` runs as a non-root Unix user, it automatically uses a user slice rooted in `XDG_CONFIG_HOME`/`HOME` and ignores per-service `user` overrides.
 
 ## Usage
 ### 1. Start Ascend:
@@ -135,6 +136,16 @@ asctl restart <service-name>
 * #### List all running services:
 ```bash
 asctl list
+```
+
+* #### Manage the current user slice:
+```bash
+asctl --user list
+```
+
+* #### Manage another user's slice:
+```bash
+asctl --user=<user-name> list
 ```
 
 * #### Check Service Status:

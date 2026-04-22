@@ -1,15 +1,9 @@
 local signal = require "os.signal"
 local args = require "common.args"
 local input = require "common.input"
-local isUnix = package.config:sub(1, 1) == "/"
+local slices = require "common.slices"
 
-local defaultAEnv = {
-	services_directory = isUnix and "/etc/ascend/services" or "C:\\ascend\\services",
-	healthchecksDirectory = isUnix and "/etc/ascend/healthchecks" or "C:\\ascend\\healthchecks",
-	ipcEndpoint = "/tmp/ascend.sock",
-	logDirectory = isUnix and "/var/log/ascend" or "C:\\ascend\\logs",
-	initScript = nil --[[@as string?]]
-}
+local defaultAEnv = slices.resolve_ascend_defaults()
 
 local aenv = util.merge_tables({
 	services_directory = args.options.services or env.get_env("ASCEND_SERVICES"),

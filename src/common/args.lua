@@ -2,7 +2,8 @@ local args = cli.parse_args(arg)
 
 local optionAliases = {
 	["l"] = "log-level",
-	["t"] = "timeout"
+	["t"] = "timeout",
+	["u"] = "user"
 }
 
 local parameters = {}
