@@ -11,7 +11,7 @@ local function read_env(get_env, name)
 end
 
 local function sanitize_slice_user(user)
-	user = tostring(user or ""):gsub("[^%w%._%-]", "_")
+	user = tostring(user or ""):gsub("[^%w.%-]", "_")
 	if #user == 0 then
 		return "user"
 	end
@@ -39,40 +39,46 @@ local function requested_user_socket(get_env, user)
 	return path.combine("/tmp", "ascend-" .. requested_user .. ".sock")
 end
 
-function slices.detect_is_root()
+function slices.detect_is_root(get_env)
 	if not isUnix then
 		return false
 	end
+	get_env = get_env or os.getenv
 	local handle = io.popen("id -u 2>/dev/null")
 	if not handle then
-		return current_user(env.get_env) == "root"
+		return current_user(get_env) == "root"
 	end
 	local uid = handle:read("l")
 	handle:close()
 	if uid ~= nil then
 		return uid == "0"
 	end
-	return current_user(env.get_env) == "root"
+	return current_user(get_env) == "root"
 end
 
 function slices.resolve_ascend_defaults(options)
 	options = options or {}
-	local get_env = options.get_env or env.get_env
+	local get_env = options.get_env or os.getenv
 	local is_root = options.is_root
 	if is_root == nil then
-		is_root = slices.detect_is_root()
+		is_root = slices.detect_is_root(get_env)
 	end
 	if isUnix and not is_root then
-		local home = read_env(get_env, "HOME") or "."
-		local config_home = read_env(get_env, "XDG_CONFIG_HOME") or path.combine(home, ".config")
-		local state_home = read_env(get_env, "XDG_STATE_HOME") or path.combine(home, ".local", "state")
 		local user = current_user(get_env)
+		local home = read_env(get_env, "HOME")
+		local tmp_root = path.combine("/tmp", "ascend-" .. sanitize_slice_user(user))
+		local config_home = read_env(get_env, "XDG_CONFIG_HOME") or
+			(home and path.combine(home, ".config")) or
+			path.combine(tmp_root, "config")
+		local state_home = read_env(get_env, "XDG_STATE_HOME") or
+			(home and path.combine(home, ".local", "state")) or
+			path.combine(tmp_root, "state")
 		return {
 			scope = "user",
 			user = user,
 			services_directory = path.combine(config_home, "ascend", "services"),
 			healthchecksDirectory = path.combine(config_home, "ascend", "healthchecks"),
-			ipcEndpoint = requested_user_socket(get_env, user),
+			ipcEndpoint = current_user_socket(get_env),
 			logDirectory = path.combine(state_home, "ascend", "logs"),
 			initScript = nil,
 		}
@@ -90,7 +96,7 @@ end
 
 function slices.resolve_asctl_defaults(options)
 	options = options or {}
-	local get_env = options.get_env or env.get_env
+	local get_env = options.get_env or os.getenv
 	local user_option = options.user_option
 	if user_option == nil or user_option == false then
 		return {
