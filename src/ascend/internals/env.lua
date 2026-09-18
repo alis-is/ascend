@@ -12,11 +12,11 @@ local defaultAEnv = {
 }
 
 local aenv = util.merge_tables({
-	services_directory = args.options.services or env.get_env("ASCEND_SERVICES"),
-	healthchecksDirectory = args.options.healthchecks or env.get_env("ASCEND_HEALTHCHECKS"),
-	ipcEndpoint = args.options.socket or env.get_env("ASCEND_SOCKET"),
-	logDirectory = args.options["log-dir"] or env.get_env("ASCEND_LOGS"),
-	initScript = args.options["init"] or env.get_env("ASCEND_INIT")
+	services_directory = args.options.services or os.getenv("ASCEND_SERVICES"),
+	healthchecksDirectory = args.options.healthchecks or os.getenv("ASCEND_HEALTHCHECKS"),
+	ipcEndpoint = args.options.socket or os.getenv("ASCEND_SOCKET"),
+	logDirectory = args.options["log-dir"] or os.getenv("ASCEND_LOGS"),
+	initScript = args.options["init"] or os.getenv("ASCEND_INIT")
 }, defaultAEnv)
 
 ---@class AscendHealthCheckDefinition
